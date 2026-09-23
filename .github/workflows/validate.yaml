@@ -1,0 +1,72 @@
+name: Validate GitOps
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Render Kubernetes configuration
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.18.6
+
+      - name: Validate Kustomize overlays
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r file; do
+            kubectl kustomize "$(dirname "$file")" >/dev/null
+          done < <(find . -type f \( -name kustomization.yaml -o -name kustomization.yml \) -not -path './.git/*')
+
+      - name: Validate local Helm charts
+        shell: bash
+        run: |
+          set -euo pipefail
+          helm lint charts/keycloak
+          helm template keycloak charts/keycloak --namespace platform >/dev/null
+          helm lint charts/keycloak -f charts/keycloak/values-prod.yaml
+          helm template keycloak charts/keycloak --namespace platform \
+            -f charts/keycloak/values-prod.yaml >/dev/null
+          helm lint charts/mailpit
+          helm template mailpit charts/mailpit --namespace platform >/dev/null
+          helm lint charts/mailpit -f charts/mailpit/values-prod.yaml
+          helm template mailpit charts/mailpit --namespace platform \
+            -f charts/mailpit/values-prod.yaml >/dev/null
+
+      - name: Validate pinned third-party charts
+        shell: bash
+        run: |
+          set -euo pipefail
+          helm repo add traefik https://traefik.github.io/charts
+          helm template traefik traefik/traefik --version 41.6.0 --namespace traefik \
+            -f platform/traefik/values-dev.yaml >/dev/null
+          helm template traefik traefik/traefik --version 41.6.0 --namespace traefik \
+            -f platform/traefik/values-prod.yaml >/dev/null
+          helm repo add argo https://argoproj.github.io/argo-helm
+          helm template argocd argo/argo-cd --version 10.9.2 --namespace argocd \
+            -f platform/argocd/values-dev.yaml \
+            --set-string 'configs.secret.extra.oidc\.keycloak\.clientSecret=ci-placeholder' >/dev/null
+          helm template argocd argo/argo-cd --version 10.9.2 --namespace argocd \
+            -f platform/argocd/values-prod.yaml \
+            --set-string 'configs.secret.extra.oidc\.keycloak\.clientSecret=ci-placeholder' >/dev/null
+          helm template ciso-assistant oci://ghcr.io/intuitem/helm-charts/ce/ciso-assistant \
+            --version 0.11.5 --namespace ciso-assistant \
+            -f platform/ciso-assistant/values-dev.yaml >/dev/null
+          helm template ciso-assistant oci://ghcr.io/intuitem/helm-charts/ce/ciso-assistant \
+            --version 0.11.5 --namespace ciso-assistant \
+            -f platform/ciso-assistant/values-prod.yaml >/dev/null

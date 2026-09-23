@@ -1,0 +1,19 @@
+# Platform
+/platform/          @ProjectLanternDI3P1P2/ops
+/bootstrap/         @ProjectLanternDI3P1P2/ops
+/clusters/          @ProjectLanternDI3P1P2/ops
+/charts/            @ProjectLanternDI3P1P2/ops
+/_scripts/          @ProjectLanternDI3P1P2/ops
+/_docs/             @ProjectLanternDI3P1P2/ops
+
+# Cross-cutting
+/security/          @ProjectLanternDI3P1P2/security
+/observability/     @ProjectLanternDI3P1P2/observability
+/resilience/        @ProjectLanternDI3P1P2/resilience
+
+# Applications
+/apps/player/       @ProjectLanternDI3P1P2/player
+/apps/dungeon/      @ProjectLanternDI3P1P2/dungeon
+/apps/combat/       @ProjectLanternDI3P1P2/combat
+/apps/rewards/      @ProjectLanternDI3P1P2/rewards
+/apps/progression/  @ProjectLanternDI3P1P2/progression

@@ -1,0 +1,5 @@
+.dev-secrets.env
+.rendered/
+.tools/
+*.local.yaml
+
