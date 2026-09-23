@@ -1,0 +1,51 @@
+global:
+  domain: argocd.localhost
+
+dex:
+  enabled: false
+
+configs:
+  cm:
+    admin.enabled: true
+    exec.enabled: false
+    oidc.config: |
+      name: Keycloak
+      issuer: http://keycloak.localhost/realms/lantern-dev
+      clientID: argocd
+      clientSecret: $oidc.keycloak.clientSecret
+      requestedScopes:
+        - openid
+        - profile
+        - email
+        - groups
+  params:
+    server.insecure: true
+  rbac:
+    policy.default: ""
+    scopes: "[groups]"
+    policy.csv: |
+      g, /platform-ops, role:admin
+      p, role:developer, applications, get, */*, allow
+      p, role:developer, logs, get, */*, allow
+      g, /developers, role:developer
+
+controller:
+  resources:
+    requests: {cpu: 100m, memory: 256Mi}
+    limits: {cpu: "1", memory: 1Gi}
+repoServer:
+  resources:
+    requests: {cpu: 100m, memory: 256Mi}
+    limits: {cpu: "1", memory: 1Gi}
+server:
+  resources:
+    requests: {cpu: 50m, memory: 128Mi}
+    limits: {cpu: 500m, memory: 512Mi}
+  ingress:
+    enabled: true
+    ingressClassName: traefik
+    hostname: argocd.localhost
+    path: /
+    pathType: Prefix
+    tls: false
+

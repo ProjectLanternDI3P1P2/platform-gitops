@@ -1,0 +1,19 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: lantern-production
+  namespace: argocd
+spec:
+  description: Lantern production platform components
+  sourceRepos:
+    - REPLACE_GIT_REPOSITORY_URL
+    - ghcr.io/intuitem/helm-charts/ce
+  destinations:
+    - {namespace: platform, server: https://kubernetes.default.svc}
+    - {namespace: ciso-assistant, server: https://kubernetes.default.svc}
+    - {namespace: default, server: https://kubernetes.default.svc}
+  clusterResourceWhitelist:
+    - {group: "", kind: Namespace}
+  namespaceResourceWhitelist:
+    - {group: "*", kind: "*"}
+

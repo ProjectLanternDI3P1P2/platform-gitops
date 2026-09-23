@@ -1,0 +1,18 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: production-foundation
+  namespace: argocd
+spec:
+  project: lantern-production
+  source:
+    repoURL: REPLACE_GIT_REPOSITORY_URL
+    targetRevision: REPLACE_GIT_REVISION
+    path: clusters/prod
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    syncOptions: [CreateNamespace=true]
+

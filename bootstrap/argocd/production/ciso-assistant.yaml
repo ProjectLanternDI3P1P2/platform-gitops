@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ciso-assistant-production
+  namespace: argocd
+spec:
+  project: lantern-production
+  sources:
+    - repoURL: ghcr.io/intuitem/helm-charts/ce
+      chart: ciso-assistant
+      targetRevision: 0.11.5
+      helm:
+        valueFiles: [$values/platform/ciso-assistant/values-prod.yaml]
+    - repoURL: REPLACE_GIT_REPOSITORY_URL
+      targetRevision: REPLACE_GIT_REVISION
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ciso-assistant
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    syncOptions: [CreateNamespace=true]
+

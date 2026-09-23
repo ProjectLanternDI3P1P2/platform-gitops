@@ -1,0 +1,78 @@
+# Replace every REPLACE_* value before production deployment.
+global:
+  domain: REPLACE_ARGOCD_DOMAIN
+
+dex:
+  enabled: false
+
+redis:
+  enabled: false
+redis-ha:
+  enabled: true
+
+configs:
+  cm:
+    url: https://REPLACE_ARGOCD_DOMAIN
+    admin.enabled: false
+    exec.enabled: false
+    oidc.config: |
+      name: Keycloak
+      issuer: https://REPLACE_SSO_DOMAIN/realms/lantern
+      clientID: argocd
+      clientSecret: $oidc.keycloak.clientSecret
+      requestedScopes:
+        - openid
+        - profile
+        - email
+        - groups
+  params:
+    server.insecure: true
+  rbac:
+    policy.default: ""
+    scopes: "[groups]"
+    policy.csv: |
+      g, /platform-ops, role:admin
+      p, role:developer, applications, get, */*, allow
+      p, role:developer, logs, get, */*, allow
+      g, /developers, role:developer
+
+controller:
+  resources:
+    requests: {cpu: 500m, memory: 1Gi}
+    limits: {cpu: "2", memory: 2Gi}
+
+repoServer:
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
+  resources:
+    requests: {cpu: 250m, memory: 512Mi}
+    limits: {cpu: "2", memory: 2Gi}
+
+server:
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
+  resources:
+    requests: {cpu: 100m, memory: 256Mi}
+    limits: {cpu: "1", memory: 1Gi}
+  ingress:
+    enabled: true
+    ingressClassName: traefik
+    hostname: REPLACE_ARGOCD_DOMAIN
+    path: /
+    pathType: Prefix
+    tls: true
+    annotations:
+      cert-manager.io/cluster-issuer: REPLACE_CLUSTER_ISSUER
+      traefik.ingress.kubernetes.io/router.entrypoints: websecure
+
+applicationSet:
+  replicas: 2
+
+notifications:
+  enabled: true
