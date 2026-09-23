@@ -1,0 +1,55 @@
+# Replace every REPLACE_* value before production deployment.
+keycloak:
+  replicas: 2
+  mode: prod
+  hostname: REPLACE_SSO_DOMAIN
+  hostnameScheme: https
+  proxyHeaders: xforwarded
+  realm: lantern
+  existingSecret: keycloak-prod-secrets
+  database:
+    host: REPLACE_KEYCLOAK_POSTGRES_HOST
+    port: 5432
+    name: keycloak
+    username: keycloak
+    passwordKey: database-password
+  realmImport:
+    enabled: true
+    displayName: Lantern
+    sslRequired: external
+    includeDemoUsers: false
+    argocdUrl: https://REPLACE_ARGOCD_DOMAIN
+    cisoAssistantUrl: https://REPLACE_CISO_DOMAIN
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: keycloak
+          topologyKey: kubernetes.io/hostname
+  topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: topology.kubernetes.io/zone
+      whenUnsatisfiable: ScheduleAnyway
+      labelSelector:
+        matchLabels:
+          app.kubernetes.io/name: keycloak
+  resources:
+    requests: {cpu: 500m, memory: 1Gi}
+    limits: {cpu: "2", memory: 2Gi}
+
+postgresql:
+  enabled: false
+
+ingress:
+  enabled: true
+  className: traefik
+  annotations:
+    cert-manager.io/cluster-issuer: REPLACE_CLUSTER_ISSUER
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+  tls:
+    enabled: true
+    secretName: keycloak-tls

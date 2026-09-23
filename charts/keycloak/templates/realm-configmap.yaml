@@ -1,0 +1,98 @@
+{{- if .Values.keycloak.realmImport.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: keycloak-realm
+  labels:
+    {{- include "lantern-keycloak.labels" . | nindent 4 }}
+data:
+  {{ .Values.keycloak.realm }}-realm.json: |
+    {
+      "realm": {{ .Values.keycloak.realm | quote }},
+      "enabled": true,
+      "displayName": {{ .Values.keycloak.realmImport.displayName | quote }},
+      "sslRequired": {{ .Values.keycloak.realmImport.sslRequired | quote }},
+      "registrationAllowed": false,
+      "resetPasswordAllowed": true,
+      "rememberMe": true,
+      "bruteForceProtected": true,
+      "groups": [
+        {"name": "platform-ops"},
+        {"name": "developers"},
+        {"name": "ciso-admins"}
+      ],
+      "users": [
+        {{- if .Values.keycloak.realmImport.includeDemoUsers }}
+        {
+          "username": "dev.ops",
+          "enabled": true,
+          "emailVerified": true,
+          "email": "dev.ops@lantern.local",
+          "firstName": "Dev",
+          "lastName": "Ops",
+          "groups": ["/platform-ops", "/ciso-admins"],
+          "credentials": [{"type": "password", "value": "${DEV_OPS_PASSWORD}", "temporary": false}]
+        },
+        {
+          "username": "dev.developer",
+          "enabled": true,
+          "emailVerified": true,
+          "email": "dev.developer@lantern.local",
+          "firstName": "Dev",
+          "lastName": "Developer",
+          "groups": ["/developers"],
+          "credentials": [{"type": "password", "value": "${DEV_DEVELOPER_PASSWORD}", "temporary": false}]
+        }
+        {{- end }}
+      ],
+      "clients": [
+        {
+          "clientId": "argocd",
+          "name": "Argo CD",
+          "enabled": true,
+          "protocol": "openid-connect",
+          "publicClient": false,
+          "secret": "${ARGOCD_OIDC_CLIENT_SECRET}",
+          "standardFlowEnabled": true,
+          "directAccessGrantsEnabled": false,
+          "rootUrl": {{ .Values.keycloak.realmImport.argocdUrl | quote }},
+          "redirectUris": [{{ printf "%s/auth/callback" .Values.keycloak.realmImport.argocdUrl | quote }}],
+          "webOrigins": [{{ .Values.keycloak.realmImport.argocdUrl | quote }}],
+          "protocolMappers": [
+            {
+              "name": "groups",
+              "protocol": "openid-connect",
+              "protocolMapper": "oidc-group-membership-mapper",
+              "consentRequired": false,
+              "config": {"full.path": "true", "id.token.claim": "true", "access.token.claim": "true", "userinfo.token.claim": "true", "claim.name": "groups"}
+            }
+          ]
+        },
+        {
+          "clientId": "ciso-assistant",
+          "name": "CISO Assistant",
+          "enabled": true,
+          "protocol": "openid-connect",
+          "publicClient": false,
+          "secret": "${CISO_ASSISTANT_OIDC_CLIENT_SECRET}",
+          "standardFlowEnabled": true,
+          "directAccessGrantsEnabled": false,
+          "rootUrl": {{ .Values.keycloak.realmImport.cisoAssistantUrl | quote }},
+          "redirectUris": [{{ printf "%s/api/accounts/oidc/openid_connect/login/callback/" .Values.keycloak.realmImport.cisoAssistantUrl | quote }}],
+          "webOrigins": [{{ .Values.keycloak.realmImport.cisoAssistantUrl | quote }}],
+          "attributes": {
+            "post.logout.redirect.uris": {{ printf "%s/login" .Values.keycloak.realmImport.cisoAssistantUrl | quote }}
+          },
+          "protocolMappers": [
+            {
+              "name": "groups",
+              "protocol": "openid-connect",
+              "protocolMapper": "oidc-group-membership-mapper",
+              "consentRequired": false,
+              "config": {"full.path": "true", "id.token.claim": "true", "access.token.claim": "true", "userinfo.token.claim": "true", "claim.name": "groups"}
+            }
+          ]
+        }
+      ]
+    }
+{{- end }}

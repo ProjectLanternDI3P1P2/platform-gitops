@@ -1,0 +1,14 @@
+# Temporary production mail capture. Messages are not delivered to recipients.
+# Keep the UI internal and access it through an administrative port-forward only.
+hostname: mail.internal.example.com
+
+storage:
+  size: 10Gi
+  storageClass: REPLACE_WITH_PRODUCTION_STORAGE_CLASS
+
+ingress:
+  enabled: false
+
+resources:
+  requests: {cpu: 50m, memory: 128Mi}
+  limits: {cpu: 500m, memory: 512Mi}

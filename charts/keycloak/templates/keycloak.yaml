@@ -1,0 +1,147 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: keycloak
+  labels:
+    app.kubernetes.io/name: keycloak
+spec:
+  selector:
+    app.kubernetes.io/name: keycloak
+  ports:
+    - {name: http, port: 80, targetPort: http}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keycloak
+  labels:
+    app.kubernetes.io/name: keycloak
+    {{- include "lantern-keycloak.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.keycloak.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: keycloak
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: keycloak
+      {{- if .Values.keycloak.realmImport.enabled }}
+      annotations:
+        checksum/realm: {{ include (print $.Template.BasePath "/realm-configmap.yaml") . | sha256sum }}
+      {{- end }}
+    spec:
+      automountServiceAccountToken: false
+      {{- with .Values.keycloak.affinity }}
+      affinity: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.keycloak.topologySpreadConstraints }}
+      topologySpreadConstraints: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: keycloak
+          image: "{{ .Values.keycloak.image.repository }}:{{ .Values.keycloak.image.tag }}"
+          imagePullPolicy: IfNotPresent
+          args:
+            - {{ ternary "start" "start-dev" (eq .Values.keycloak.mode "prod") | quote }}
+            {{- if .Values.keycloak.realmImport.enabled }}
+            - "--import-realm"
+            {{- end }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: {drop: ["ALL"]}
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+          env:
+            - {name: KC_DB, value: postgres}
+            - {name: KC_DB_URL, value: "jdbc:postgresql://{{ .Values.keycloak.database.host }}:{{ .Values.keycloak.database.port }}/{{ .Values.keycloak.database.name }}"}
+            - {name: KC_DB_USERNAME, value: {{ .Values.keycloak.database.username | quote }}}
+            - {name: KC_HEALTH_ENABLED, value: "true"}
+            - {name: KC_HTTP_ENABLED, value: "true"}
+            - {name: KC_HOSTNAME, value: "{{ .Values.keycloak.hostnameScheme }}://{{ .Values.keycloak.hostname }}"}
+            - {name: KC_HOSTNAME_STRICT, value: "true"}
+            {{- if .Values.keycloak.proxyHeaders }}
+            - {name: KC_PROXY_HEADERS, value: {{ .Values.keycloak.proxyHeaders | quote }}}
+            {{- end }}
+            - {name: KC_BOOTSTRAP_ADMIN_USERNAME, value: admin}
+            - name: KC_BOOTSTRAP_ADMIN_PASSWORD
+              valueFrom: {secretKeyRef: {name: "{{ .Values.keycloak.existingSecret }}", key: admin-password}}
+            - name: KC_DB_PASSWORD
+              valueFrom: {secretKeyRef: {name: "{{ .Values.keycloak.existingSecret }}", key: "{{ .Values.keycloak.database.passwordKey }}"}}
+            {{- if and .Values.keycloak.realmImport.enabled .Values.keycloak.realmImport.includeDemoUsers }}
+            - name: DEV_OPS_PASSWORD
+              valueFrom: {secretKeyRef: {name: "{{ .Values.keycloak.existingSecret }}", key: dev-ops-password}}
+            - name: DEV_DEVELOPER_PASSWORD
+              valueFrom: {secretKeyRef: {name: "{{ .Values.keycloak.existingSecret }}", key: dev-developer-password}}
+            {{- end }}
+            {{- if .Values.keycloak.realmImport.enabled }}
+            - name: ARGOCD_OIDC_CLIENT_SECRET
+              valueFrom: {secretKeyRef: {name: "{{ .Values.keycloak.existingSecret }}", key: argocd-oidc-client-secret}}
+            - name: CISO_ASSISTANT_OIDC_CLIENT_SECRET
+              valueFrom: {secretKeyRef: {name: "{{ .Values.keycloak.existingSecret }}", key: ciso-assistant-oidc-client-secret}}
+            {{- end }}
+          ports:
+            - {name: http, containerPort: 8080}
+            - {name: management, containerPort: 9000}
+          startupProbe:
+            httpGet: {path: /health/ready, port: management}
+            failureThreshold: 30
+            periodSeconds: 5
+          readinessProbe:
+            httpGet: {path: /health/ready, port: management}
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: {path: /health/live, port: management}
+            periodSeconds: 20
+          resources: {{- toYaml .Values.keycloak.resources | nindent 12 }}
+          {{- if .Values.keycloak.realmImport.enabled }}
+          volumeMounts:
+            - {name: realm, mountPath: /opt/keycloak/data/import, readOnly: true}
+          {{- end }}
+      {{- if .Values.keycloak.realmImport.enabled }}
+      volumes:
+        - name: realm
+          configMap: {name: keycloak-realm}
+      {{- end }}
+{{- if .Values.ingress.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: keycloak
+  {{- with .Values.ingress.annotations }}
+  annotations: {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+    - hosts: [{{ .Values.keycloak.hostname | quote }}]
+      secretName: {{ .Values.ingress.tls.secretName | quote }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.keycloak.hostname }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service: {name: keycloak, port: {name: http}}
+{{- end }}
+{{- if .Values.keycloak.podDisruptionBudget.enabled }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: keycloak
+spec:
+  minAvailable: {{ .Values.keycloak.podDisruptionBudget.minAvailable }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: keycloak
+{{- end }}

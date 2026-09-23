@@ -1,0 +1,57 @@
+keycloak:
+  image:
+    repository: quay.io/keycloak/keycloak
+    tag: "26.7.4"
+  replicas: 1
+  mode: dev
+  hostname: keycloak.localhost
+  hostnameScheme: http
+  proxyHeaders: ""
+  realm: lantern-dev
+  existingSecret: keycloak-dev-secrets
+  database:
+    host: keycloak-postgresql
+    port: 5432
+    name: keycloak
+    username: keycloak
+    passwordKey: database-password
+  realmImport:
+    enabled: true
+    displayName: Lantern Development
+    sslRequired: none
+    includeDemoUsers: true
+    argocdUrl: http://argocd.localhost
+    cisoAssistantUrl: http://ciso.localhost
+  podDisruptionBudget:
+    enabled: false
+    minAvailable: 1
+  affinity: {}
+  topologySpreadConstraints: []
+  resources:
+    requests: {cpu: 200m, memory: 512Mi}
+    limits: {cpu: "1", memory: 1Gi}
+
+postgresql:
+  enabled: true
+  image:
+    repository: postgres
+    tag: "17.6-alpine"
+  existingSecret: keycloak-dev-secrets
+  volumePermissionsImage:
+    repository: busybox
+    tag: "1.37.0"
+  storage:
+    size: 2Gi
+    storageClass: hostpath
+  resources:
+    requests: {cpu: 100m, memory: 256Mi}
+    limits: {cpu: 500m, memory: 512Mi}
+
+ingress:
+  enabled: true
+  className: traefik
+  annotations: {}
+  tls:
+    enabled: false
+    secretName: ""
+

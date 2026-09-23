@@ -1,0 +1,101 @@
+global:
+  domain: ciso.localhost
+  tls: false
+  securityContext:
+    fsGroup: 1001
+    fsGroupChangePolicy: OnRootMismatch
+    seccompProfile: {type: RuntimeDefault}
+
+serviceAccount:
+  create: true
+  automountServiceAccountToken: false
+
+backend:
+  env:
+    - name: FORCE_CREATE_ADMIN
+      value: "true"
+    - name: UV_CACHE_DIR
+      value: /tmp/uv-cache
+    - name: XDG_CACHE_HOME
+      value: /tmp/.cache
+    - name: MPLCONFIGDIR
+      value: /tmp/matplotlib
+  huey:
+    env:
+      - name: UV_CACHE_DIR
+        value: /tmp/uv-cache
+      - name: XDG_CACHE_HOME
+        value: /tmp/.cache
+      - name: MPLCONFIGDIR
+        value: /tmp/matplotlib
+  config:
+    emailAdmin: dev.ops@lantern.local
+    smtp:
+      defaultFrom: no-reply@lantern.local
+      host: mailpit.platform.svc.cluster.local
+      port: 1025
+      useTls: false
+      useSsl: false
+    databaseType: sqlite
+    djangoSecretKey: ""
+    djangoExistingSecretKey: ciso-assistant-secrets
+    djangoDebug: false
+    chat:
+      enabled: false
+  persistence:
+    sqlite:
+      enabled: true
+      size: 2Gi
+      storageClass: hostpath
+    localStorage:
+      enabled: true
+      size: 2Gi
+      storageClass: hostpath
+  resources:
+    requests: {cpu: 100m, memory: 512Mi}
+    limits: {cpu: "1", memory: 1Gi}
+  containerSecurityContext:
+    runAsUser: 1001
+    runAsGroup: 1001
+    runAsNonRoot: true
+    privileged: false
+    readOnlyRootFilesystem: true
+    allowPrivilegeEscalation: false
+    capabilities: {drop: ["ALL"]}
+
+frontend:
+  resources:
+    requests: {cpu: 50m, memory: 128Mi}
+    limits: {cpu: 500m, memory: 512Mi}
+  containerSecurityContext:
+    runAsUser: 1001
+    runAsGroup: 1001
+    runAsNonRoot: true
+    privileged: false
+    readOnlyRootFilesystem: true
+    allowPrivilegeEscalation: false
+    capabilities: {drop: ["ALL"]}
+
+ingress:
+  enabled: true
+  ingressClassName: traefik
+  path: /
+  pathType: Prefix
+  tls:
+    enabled: false
+
+networkPolicy:
+  enabled: true
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector: {}
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+
+postgresql:
+  enabled: false
+qdrant:
+  enabled: false
+

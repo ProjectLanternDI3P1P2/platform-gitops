@@ -1,0 +1,19 @@
+image:
+  repository: axllent/mailpit
+  tag: "v1.31.1"
+hostname: mail.localhost
+storage:
+  size: 1Gi
+  storageClass: hostpath
+resources:
+  requests: {cpu: 25m, memory: 64Mi}
+  limits: {cpu: 250m, memory: 256Mi}
+
+ingress:
+  enabled: true
+  className: traefik
+  annotations: {}
+  tls:
+    enabled: false
+    secretName: ""
+

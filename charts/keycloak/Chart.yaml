@@ -1,0 +1,7 @@
+apiVersion: v2
+name: lantern-keycloak
+description: Keycloak for the Lantern platform, with an optional development PostgreSQL database
+type: application
+version: 0.1.0
+appVersion: "26.7.4"
+
