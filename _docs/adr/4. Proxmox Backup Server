@@ -1,0 +1,17 @@
+# ADR-001: Stratégie de sauvegarde du cluster SDN via PBS
+
+## Contexte: Nécessité de mettre en place une solution de sauvegarde centralisée et automatisée pour assurer la résilience des machines virtuelles de notre cluster SDN.
+
+### Décision: 
+- Déploiement bare-metal direct des paquets de Proxmox Backup Server (PBS) sur le noeud PVE-BACKUP avec ajout du repo `http://download.proxmox.com/debian/pbs` dans un fichier situé ici **/etc/apt/sources.list.d/pbs.sources** puis installation du paquet `proxmox-backup-server` et ajout du stockage au niveau Datacenter pour couvrir l'ensemble du cluster, exposition du service sur le port dédié `8007` via l'interface réseau locale (`10.4.111.120`).
+- Planification d'un job de sauvegarde quotidien à 06 h 00 en mode snapshot (à chaud).
+- Politique de rétention configurée: keep-last : 7 (les 7 dernières sauvegardes journalières) et keep-weekly: 4 (une sauvegarde par semaine sur 4 semaines).
+- Mise en place d'un Verify Job à 7 h 00 et d'un Garbage Collection Job à 7 h 30 sur le datastore PBS.
+
+### Conséquences:
+- Bénéfices: Sauvegardes automatisées, temps d'arrêt nul pour les VM du cluster et historique de restauration étendu sur 1 mois.
+- La déduplication native de PBS permet de stocker des centaines de points de restauration sur seulement 1.8 To utile monté sur le LVM `vg_backup`.
+
+### Limites: 
+- Stockage sur un volume LVM sans redondance RAID (risque en cas de panne matérielle d'un disque).
+
