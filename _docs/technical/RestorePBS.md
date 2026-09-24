@@ -1,46 +1,46 @@
-# Procédure : Restauration d'une VM depuis le stockage PBS
+# Procedure: Restoring a VM from PBS Storage
 
-Ce document détaille la démarche pour restaurer une machine virtuelle ou un conteneur à partir de l'interface Proxmox VE liée au stockage PBS (`pbs-cluster`)[cite: 2].
-
----
-
-### 1. Navigation vers l'espace de sauvegarde
-
-1. Dans l'arborescence latérale gauche (**Server View** / Datacenter)[cite: 2] :
-   - Dérouler le nœud hébergeant le stockage (ex : `pve-backup`)[cite: 2].
-   - Cliquer sur le stockage **`pbs-cluster (pve-backup)`**[cite: 2].
-2. Dans le menu horizontal supérieur, cliquer sur l'onglet **`Backups`** (situé entre *Summary* et *Permissions*)[cite: 2].
+This document outlines the steps to restore a virtual machine or container using the Proxmox VE web interface connected to the PBS storage (`pbs-cluster`)[cite: 2].
 
 ---
 
-### 2. Identifier et sélectionner la sauvegarde
+### 1. Navigate to the Backup Storage
 
-La liste affiche l'ensemble des snapshots disponibles sur le cluster[cite: 2]. Utiliser les colonnes pour repérer le bon point de restauration :
-* **Name :** Format de l'archive (ex : `vm/105/2026-09-24T07:26:01Z`)[cite: 2].
-* **Notes :** Nom d'affichage de la machine (ex : `kube-worker-03`, `pfsense`, `kube-master-01`)[cite: 2].
-* **Date :** Horodatage de la réalisation du snapshot[cite: 2].
-* **Size :** Taille logique du volume sauvegardé (ex : `20.00 GiB`)[cite: 2].
-* **Verify State :** Contrôler la présence de la mention **`✔ OK`** (garantit l'intégrité des blocs dédupliqués)[cite: 2].
-
-Sélectionner d'un clic la ligne du snapshot voulu[cite: 2].
+1. In the left sidebar (**Server View** / Datacenter)[cite: 2]:
+   - Expand the node hosting the storage (e.g., `pve-backup`)[cite: 2].
+   - Click on the storage entry **`pbs-cluster (pve-backup)`**[cite: 2].
+2. In the top navigation bar, select the **`Backups`** tab (located between *Summary* and *Permissions*)[cite: 2].
 
 ---
 
-### 3. Exécuter la restauration
+### 2. Locate and Select the Backup Snapshot
 
-1. Dans la barre d'outils au-dessus du tableau, cliquer sur le bouton **`Restore`**[cite: 2].
-2. Configurer les options dans la fenêtre modale :
-   * **Target node :** Sélectionner le nœud PVE de destination où démarrera l'instance (ex : `pve1`, `pve-diiage` ou `pve-backup`)[cite: 2].
-   * **VM ID :** 
-     * Conserver l'ID d'origine pour écraser et restaurer la machine existante.
-     * Définir un nouvel ID libre pour déployer une copie conforme sans impacter la VM actuelle.
-   * **Storage :** Sélectionner le stockage de disques cibles (ex : `local-lvm`).
-   * **Start after restore :** À cocher si démarrage automatique souhaité à l'issue de l'opération.
-3. Valider avec le bouton **Restore** et suivre la progression dans la fenêtre des logs de tâches.
+The main table lists all snapshots available across the cluster[cite: 2]. Use the table columns to identify the desired restore point:
+* **Name:** Snapshot path identifier (e.g., `vm/105/2026-09-24T07:26:01Z`)[cite: 2].
+* **Notes:** Guest hostname / display name (e.g., `kube-worker-03`, `pfsense`, `kube-master-01`)[cite: 2].
+* **Date:** Timestamp of snapshot creation[cite: 2].
+* **Size:** Logical volume size (e.g., `20.00 GiB`)[cite: 2].
+* **Verify State:** Verify that the status shows **`✔ OK`** (confirms chunk integrity and deduplication health)[cite: 2].
+
+Click on the row corresponding to the snapshot you want to restore[cite: 2].
 
 ---
 
-### Options complémentaires de la barre d'actions
+### 3. Run the Restore Process
 
-* **File Restore :** Permet d'explorer virtuellement les partitions du snapshot pour télécharger un fichier ou un dossier précis sans avoir à restaurer la VM complète[cite: 2].
-* **Show Configuration :** Affiche la configuration matérielle (RAM, CPU, interfaces réseau SDN) enregistrée au moment du snapshot[cite: 2].
+1. In the action toolbar above the table, click the **`Restore`** button[cite: 2].
+2. Configure the settings in the modal dialog:
+   * **Target node:** Select the destination PVE node where the VM will run (e.g., `pve1`, `pve-diiage`, or `pve-backup`)[cite: 2].
+   * **VM ID:** 
+     * Keep the original ID to overwrite and replace the existing VM.
+     * Set a new, unused ID to deploy an exact clone without affecting the current VM.
+   * **Storage:** Select the target storage pool for the virtual disk (e.g., `local-lvm`).
+   * **Start after restore:** Check this box if you want the instance to boot automatically once restoration completes.
+3. Click **Restore** and monitor the task execution logs in the popup window.
+
+---
+
+### Additional Toolbar Actions
+
+* **File Restore:** Allows browsing the snapshot's partitions directly in the browser to download individual files or folders without restoring the full disk[cite: 2].
+* **Show Configuration:** Displays the hardware and network configuration recorded at the time of the snapshot[cite: 2].
