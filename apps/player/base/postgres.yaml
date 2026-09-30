@@ -1,0 +1,95 @@
+# PostgreSQL du service Player (une base par microservice).
+# Le mot de passe vient du Secret "player-db", créé à la main (jamais dans Git).
+apiVersion: v1
+kind: Service
+metadata:
+  name: player-db
+  labels:
+    app.kubernetes.io/name: player-db
+spec:
+  selector:
+    app.kubernetes.io/name: player-db
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: player-db
+  labels:
+    app.kubernetes.io/name: player-db
+spec:
+  serviceName: player-db
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: player-db
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: player-db
+    spec:
+      nodeSelector:
+        node-role.kubernetes.io/worker: worker
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 70
+        runAsGroup: 70
+        fsGroup: 70
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: postgres
+          image: postgres:17-alpine
+          ports:
+            - name: postgres
+              containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: player
+            - name: POSTGRES_USER
+              value: player
+            - name: POSTGRES_PASSWORD_FILE
+              value: /run/secrets/db/password
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 512Mi
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "player", "-d", "player"]
+            periodSeconds: 10
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "player", "-d", "player"]
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+            - name: db-secret
+              mountPath: /run/secrets/db
+              readOnly: true
+      volumes:
+        - name: db-secret
+          secret:
+            secretName: player-db
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: longhorn
+        resources:
+          requests:
+            storage: 5Gi
