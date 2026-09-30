@@ -1,0 +1,13 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: player
+
+resources:
+  - ../../base
+  - ingress.yaml
+
+# Déployer une nouvelle version = changer cette ligne (tag fixe main-<sha>, jamais "main").
+images:
+  - name: diiageplayerimage/player-image
+    newTag: main-47e129f
