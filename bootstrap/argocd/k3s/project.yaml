@@ -1,0 +1,15 @@
+# Projet Argo CD des microservices du cluster K3s.
+# Aucune ressource cluster autorisée (pas de Namespace) ; on ajoutera les
+# namespaces dungeon/combat/rewards/progression au fur et à mesure.
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: lantern-apps
+  namespace: argocd
+spec:
+  description: Microservices Lantern (cluster K3s)
+  sourceRepos:
+    - https://github.com/ProjectLanternDI3P1P2/platform-gitops.git
+  destinations:
+    - namespace: player
+      server: https://kubernetes.default.svc

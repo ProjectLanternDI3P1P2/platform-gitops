@@ -1,0 +1,20 @@
+# Ingress de DÉMO pour vérifier le 200 : seul /health est exposé.
+# Cible d'architecture (ADR-GLOB-003) : seule la Gateway (Traefik) est publique,
+# cette route sera retirée.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: player-api-health
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: player.lantern.diiage
+      http:
+        paths:
+          - path: /health
+            pathType: Prefix
+            backend:
+              service:
+                name: player-api
+                port:
+                  name: http
