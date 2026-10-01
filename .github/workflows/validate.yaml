@@ -39,34 +39,47 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          helm lint charts/keycloak
-          helm template keycloak charts/keycloak --namespace platform >/dev/null
-          helm lint charts/keycloak -f charts/keycloak/values-prod.yaml
-          helm template keycloak charts/keycloak --namespace platform \
-            -f charts/keycloak/values-prod.yaml >/dev/null
-          helm lint charts/mailpit
-          helm template mailpit charts/mailpit --namespace platform >/dev/null
-          helm lint charts/mailpit -f charts/mailpit/values-prod.yaml
-          helm template mailpit charts/mailpit --namespace platform \
-            -f charts/mailpit/values-prod.yaml >/dev/null
+          local_chart_specs=(
+            "keycloak|charts/keycloak|"
+            "keycloak|charts/keycloak|charts/keycloak/values-prod.yaml"
+            "mailpit|charts/mailpit|"
+            "mailpit|charts/mailpit|charts/mailpit/values-prod.yaml"
+          )
+          for spec in "${local_chart_specs[@]}"; do
+            IFS='|' read -r release chart values_file <<< "$spec"
+            lint_args=(lint "$chart")
+            template_args=(template "$release" "$chart" --namespace platform)
+            if [[ -n "$values_file" ]]; then
+              lint_args+=(-f "$values_file")
+              template_args+=(-f "$values_file")
+            fi
+            helm "${lint_args[@]}"
+            helm "${template_args[@]}" >/dev/null
+          done
 
       - name: Validate pinned third-party charts
         shell: bash
         run: |
           set -euo pipefail
-          helm repo add --force-update traefik https://traefik.github.io/charts
+          helm repo add traefik https://traefik.github.io/charts
           helm template traefik traefik/traefik --version 41.6.0 --namespace traefik \
             -f platform/traefik/values-dev.yaml >/dev/null
           helm template traefik traefik/traefik --version 41.6.0 --namespace traefik \
             -f platform/traefik/values-prod.yaml >/dev/null
-          helm repo add --force-update argo https://argoproj.github.io/argo-helm
+          helm repo add argo https://argoproj.github.io/argo-helm
           helm template argocd argo/argo-cd --version 10.9.2 --namespace argocd \
             -f platform/argocd/values-dev.yaml \
             --set-string 'configs.secret.extra.oidc\.keycloak\.clientSecret=ci-placeholder' >/dev/null
           helm template argocd argo/argo-cd --version 10.9.2 --namespace argocd \
             -f platform/argocd/values-prod.yaml \
             --set-string 'configs.secret.extra.oidc\.keycloak\.clientSecret=ci-placeholder' >/dev/null
-          helm repo add --force-update harbor https://helm.goharbor.io
+          helm template argocd argo/argo-cd --version 10.9.2 --namespace argocd \
+            -f platform/argocd/values-k3s.yaml >/dev/null
+          helm repo add grafana https://grafana.github.io/helm-charts
+          helm template alloy grafana/alloy --version 1.13.0 --namespace monitoring \
+            -f observability/alloy/values-k3s.yaml >/dev/null
+          helm repo add harbor https://helm.goharbor.io
+          helm repo update
           helm template harbor harbor/harbor --version 1.19.2 --namespace harbor \
             -f platform/harbor/values-k3s.yaml \
             --set-string database.internal.password=ci-placeholder \

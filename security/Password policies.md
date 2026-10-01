@@ -47,7 +47,7 @@ The table below summarizes the technical requirements automatically applied by t
 
 Standard user account | 12 characters | 3 of the 4 categories* | No forced expiration (renewal upon suspicion) |
 Privileged / admin account | 16 characters | 4 categories mandatory | 90 days |
-Service / application account | 20 characters | Randomly generated, managed by vault | Automatic rotation every 90 days or upon each use 
+Service / application account | 20 characters | Randomly generated, managed by vault | Automatic rotation every 90 days or upon each use
 
 The 4 categories: uppercase letters, lowercase letters, digits, special characters. A passphrase of 16 characters or more without imposed complexity is accepted as an alternative, in accordance with NIST recommendations.
 
