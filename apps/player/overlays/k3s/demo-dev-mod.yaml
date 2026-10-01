@@ -1,0 +1,18 @@
+# MODE DÉMO (temporaire) : l'API tourne en "Development".
+# Au démarrage elle applique les migrations EF, insère des données de test
+# et expose sa doc interactive (Scalar). Un seul réplica : évite que deux pods
+# migrent et alimentent la base en même temps.
+# À retirer quand un Job de migration sera en place (ADR-0036).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: player-api
+spec:
+  replicas: 1
+  template:
+    spec:
+      containers:
+        - name: player-api
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              value: Development

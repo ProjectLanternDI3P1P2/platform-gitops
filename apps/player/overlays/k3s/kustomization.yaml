@@ -7,6 +7,10 @@ resources:
   - ../../base
   - ingress.yaml
 
+# Mode démo temporaire (voir demo-dev-mode.yaml).
+patches:
+  - path: demo-dev-mode.yaml
+  
 # Déployer une nouvelle version = changer cette ligne (tag fixe main-<sha>, jamais "main").
 images:
   - name: diiageplayerimage/player-image
