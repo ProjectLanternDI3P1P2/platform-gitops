@@ -63,5 +63,9 @@ alloy:
     varlog: true
 
   securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
     runAsGroup: 0
     runAsUser: 0

@@ -78,7 +78,6 @@ jobs:
           helm repo add grafana https://grafana.github.io/helm-charts
           helm template alloy grafana/alloy --version 1.13.0 --namespace monitoring \
             -f observability/alloy/values-k3s.yaml >/dev/null
-          helm repo add --force-update harbor https://helm.goharbor.io
           helm repo add harbor https://helm.goharbor.io
           helm repo update
           helm template harbor harbor/harbor --version 1.19.2 --namespace harbor \

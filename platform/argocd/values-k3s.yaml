@@ -1,6 +1,9 @@
 # Non-secret values observed from the live argo-cd 10.9.2 Helm release on
 # 2026-10-01. This file records the currently deployed K3s profile; it does not
 # replace the hardened production profile in values-prod.yaml.
+# SECURITY WARNING: This observed profile serves Argo CD over plaintext HTTP.
+# Keep it on a trusted lab/private network only. Before any broader exposure,
+# enable ingress TLS with a managed certificate and remove server.insecure.
 global:
   domain: argocd.lantern.diiage
   nodeSelector:
@@ -11,6 +14,7 @@ dex:
 
 configs:
   params:
+    # Required by the observed HTTP-only lab deployment; do not use publicly.
     server.insecure: true
 
 controller:
@@ -45,4 +49,5 @@ server:
     hostname: argocd.lantern.diiage
     path: /
     pathType: Prefix
+    # No upstream TLS terminator is configured for this observed profile.
     tls: false

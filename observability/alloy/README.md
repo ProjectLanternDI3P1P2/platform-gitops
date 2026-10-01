@@ -24,3 +24,15 @@ the existing Helm release authoritative until an operator has:
 
 Do not delete the existing Helm release metadata during the initial adoption.
 It is rollback evidence until the Argo CD-managed deployment has been verified.
+
+## Security constraints
+
+Alloy runs as UID 0 because it reads the node's `/var/log/pods` files through
+the chart's `varlog` host-path mount. The container drops all Linux capabilities
+and cannot escalate privileges; moving to a non-root user requires changing
+the node log-file ownership or collection mechanism first.
+
+The current Loki endpoint is an HTTP address on the private `192.168.0.0/24`
+network. This is a trusted-network deployment boundary, not transport
+encryption. Replace it with an HTTPS Loki endpoint and configure the required
+CA or client credentials before routing logs across an untrusted network.
