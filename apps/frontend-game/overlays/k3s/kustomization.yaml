@@ -1,0 +1,17 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: frontend-game
+
+resources:
+  - ../../base
+  - ingress.yaml
+
+patches:
+  - path: env.yaml
+
+# Déployer une nouvelle version = changer cette ligne (tag fixe dev-<sha7>, jamais "dev").
+# À REMPLACER par le vrai tag publié sur Docker Hub avant de merger.
+images:
+  - name: diiageplayerimage/frontend-game-image
+    newTag: dev-REPLACE_ME
