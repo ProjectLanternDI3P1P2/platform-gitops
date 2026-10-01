@@ -13,3 +13,11 @@ spec:
   destinations:
     - namespace: player
       server: https://kubernetes.default.svc
+    - namespace: dungeon
+      server: https://kubernetes.default.svc
+    - namespace: combat
+      server: https://kubernetes.default.svc
+    - namespace: rewards
+      server: https://kubernetes.default.svc
+    - namespace: progression
+      server: https://kubernetes.default.svc

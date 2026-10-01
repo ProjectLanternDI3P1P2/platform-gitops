@@ -1,0 +1,41 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: lantern-apps
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+
+  syncPolicy:
+    preserveResourcesOnDeletion: true
+
+  generators:
+    - git:
+        repoURL: https://github.com/ProjectLanternDI3P1P2/platform-gitops.git
+        revision: main
+        directories:
+          - path: apps/*/overlays/k3s
+
+  template:
+    metadata:
+      name: '{{ index .path.segments 1 }}'
+    spec:
+      project: lantern-apps
+      source:
+        repoURL: https://github.com/ProjectLanternDI3P1P2/platform-gitops.git
+        targetRevision: main
+        path: '{{ .path.path }}'
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: '{{ index .path.segments 1 }}'
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        retry:
+          limit: 5
+          backoff:
+            duration: 30s
+            factor: 2
+            maxDuration: 5m
