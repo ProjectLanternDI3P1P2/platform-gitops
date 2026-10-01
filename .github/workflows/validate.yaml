@@ -12,16 +12,18 @@ permissions:
 jobs:
   validate:
     name: Render Kubernetes configuration
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Setup kubectl
-        uses: azure/setup-kubectl@v4
+        uses: azure/setup-kubectl@776406bce94f63e41d621b960d78ee25c8b76ede # v4
+        with:
+          version: v1.31.0
 
       - name: Setup Helm
-        uses: azure/setup-helm@v4
+        uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4
         with:
           version: v3.18.6
 
@@ -52,12 +54,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          helm repo add traefik https://traefik.github.io/charts
+          helm repo add --force-update traefik https://traefik.github.io/charts
           helm template traefik traefik/traefik --version 41.6.0 --namespace traefik \
             -f platform/traefik/values-dev.yaml >/dev/null
           helm template traefik traefik/traefik --version 41.6.0 --namespace traefik \
             -f platform/traefik/values-prod.yaml >/dev/null
-          helm repo add argo https://argoproj.github.io/argo-helm
+          helm repo add --force-update argo https://argoproj.github.io/argo-helm
           helm template argocd argo/argo-cd --version 10.9.2 --namespace argocd \
             -f platform/argocd/values-dev.yaml \
             --set-string 'configs.secret.extra.oidc\.keycloak\.clientSecret=ci-placeholder' >/dev/null
@@ -69,6 +71,11 @@ jobs:
           helm repo add grafana https://grafana.github.io/helm-charts
           helm template alloy grafana/alloy --version 1.13.0 --namespace monitoring \
             -f observability/alloy/values-k3s.yaml >/dev/null
+          helm repo add --force-update harbor https://helm.goharbor.io
+          helm template harbor harbor/harbor --version 1.19.2 --namespace harbor \
+            -f platform/harbor/values-k3s.yaml \
+            --set-string database.internal.password=ci-placeholder \
+            --set-string registry.credentials.password=ci-placeholder >/dev/null
           helm template ciso-assistant oci://ghcr.io/intuitem/helm-charts/ce/ciso-assistant \
             --version 0.11.5 --namespace ciso-assistant \
             -f platform/ciso-assistant/values-dev.yaml >/dev/null

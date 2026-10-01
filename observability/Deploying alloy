@@ -1,0 +1,10 @@
+Here are some commands that you'll need to run to deploy apploy, those three first commands need to be done before creating the alloy-values.yaml:
+
+helm repo add grafana https://grafana.github.io/helm-charts
+helm repo update
+kubectl create namespace monitoring
+
+
+Then you can deploy alloy with the following command:
+
+helm install alloy grafana/alloy -n monitoring -f alloy-values.yaml
