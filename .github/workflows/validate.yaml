@@ -64,6 +64,11 @@ jobs:
           helm template argocd argo/argo-cd --version 10.9.2 --namespace argocd \
             -f platform/argocd/values-prod.yaml \
             --set-string 'configs.secret.extra.oidc\.keycloak\.clientSecret=ci-placeholder' >/dev/null
+          helm template argocd argo/argo-cd --version 10.9.2 --namespace argocd \
+            -f platform/argocd/values-k3s.yaml >/dev/null
+          helm repo add grafana https://grafana.github.io/helm-charts
+          helm template alloy grafana/alloy --version 1.13.0 --namespace monitoring \
+            -f observability/alloy/values-k3s.yaml >/dev/null
           helm template ciso-assistant oci://ghcr.io/intuitem/helm-charts/ce/ciso-assistant \
             --version 0.11.5 --namespace ciso-assistant \
             -f platform/ciso-assistant/values-dev.yaml >/dev/null

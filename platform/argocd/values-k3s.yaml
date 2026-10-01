@@ -1,0 +1,48 @@
+# Non-secret values observed from the live argo-cd 10.9.2 Helm release on
+# 2026-10-01. This file records the currently deployed K3s profile; it does not
+# replace the hardened production profile in values-prod.yaml.
+global:
+  domain: argocd.lantern.diiage
+  nodeSelector:
+    node-role.kubernetes.io/worker: worker
+
+dex:
+  enabled: false
+
+configs:
+  params:
+    server.insecure: true
+
+controller:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+
+repoServer:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+
+server:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  ingress:
+    enabled: true
+    ingressClassName: traefik
+    hostname: argocd.lantern.diiage
+    path: /
+    pathType: Prefix
+    tls: false

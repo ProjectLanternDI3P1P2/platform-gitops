@@ -1,0 +1,29 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: lantern-platform-k3s
+  namespace: argocd
+spec:
+  description: Cluster platform components managed through reviewed GitOps changes
+  sourceRepos:
+    - https://github.com/ProjectLanternDI3P1P2/platform-gitops.git
+    - https://grafana.github.io/helm-charts
+  destinations:
+    - namespace: default
+      server: https://kubernetes.default.svc
+    - namespace: monitoring
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRole
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRoleBinding
+    - group: apiextensions.k8s.io
+      kind: CustomResourceDefinition
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
+  orphanedResources:
+    warn: true
