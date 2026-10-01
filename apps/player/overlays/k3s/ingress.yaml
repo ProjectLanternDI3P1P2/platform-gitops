@@ -1,5 +1,6 @@
-# Ingress de DÉMO pour vérifier le 200 : seul /health est exposé.
-# Cible d'architecture (ADR-GLOB-003) : seule la Gateway (Traefik) est publique,
+# Ingress de DÉMO : expose toute l'API REST (port 8080) sur le réseau interne.
+# Le gRPC (8081) n'est pas exposé. Aucune authentification sur ces routes :
+# cible d'architecture (ADR-GLOB-003) = seule la Gateway (Traefik + Keycloak) est publique,
 # cette route sera retirée.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -11,7 +12,7 @@ spec:
     - host: player.lantern.diiage
       http:
         paths:
-          - path: /health
+          - path: /
             pathType: Prefix
             backend:
               service:
