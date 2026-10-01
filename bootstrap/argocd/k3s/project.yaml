@@ -21,3 +21,5 @@ spec:
       server: https://kubernetes.default.svc
     - namespace: progression
       server: https://kubernetes.default.svc
+    - namespace: frontend-game
+      server: https://kubernetes.default.svc

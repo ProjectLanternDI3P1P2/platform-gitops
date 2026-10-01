@@ -10,3 +10,4 @@ resources:
   - combat.yaml
   - rewards.yaml
   - progression.yaml
+  - frontend-game.yaml
