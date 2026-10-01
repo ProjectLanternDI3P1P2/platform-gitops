@@ -1,0 +1,18 @@
+# Porte d'entrée HTTP du front via Traefik (pas de certificat ni d'IP publique).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: frontend-game
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: front.lantern.diiage
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend-game
+                port:
+                  name: http
