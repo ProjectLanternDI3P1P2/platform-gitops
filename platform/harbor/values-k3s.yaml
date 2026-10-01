@@ -1,0 +1,121 @@
+# Harbor 2.15.2 on the Lantern K3s cluster.
+# The matching Helm chart version is pinned by _scripts/install-harbor.ps1.
+# Secret values are supplied from the harbor-bootstrap Secret over stdin and
+# must never be added to this file.
+expose:
+  type: ingress
+  tls:
+    enabled: true
+    certSource: auto
+    auto:
+      commonName: registry.lantern.diiage
+  ingress:
+    hosts:
+      core: registry.lantern.diiage
+    className: traefik
+    annotations:
+      traefik.ingress.kubernetes.io/router.entrypoints: websecure
+      traefik.ingress.kubernetes.io/router.tls: "true"
+
+externalURL: https://registry.lantern.diiage
+
+existingSecretAdminPassword: harbor-bootstrap
+existingSecretAdminPasswordKey: HARBOR_ADMIN_PASSWORD
+existingSecretSecretKey: harbor-bootstrap
+
+updateStrategy:
+  type: Recreate
+
+persistence:
+  enabled: true
+  resourcePolicy: keep
+  persistentVolumeClaim:
+    registry:
+      storageClass: longhorn
+      accessMode: ReadWriteOnce
+      size: 20Gi
+    jobservice:
+      jobLog:
+        storageClass: longhorn
+        accessMode: ReadWriteOnce
+        size: 1Gi
+    database:
+      storageClass: longhorn
+      accessMode: ReadWriteOnce
+      size: 5Gi
+    redis:
+      storageClass: longhorn
+      accessMode: ReadWriteOnce
+      size: 2Gi
+    trivy:
+      storageClass: longhorn
+      accessMode: ReadWriteOnce
+      size: 5Gi
+  imageChartStorage:
+    type: filesystem
+    filesystem:
+      rootdirectory: /storage
+
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: false
+
+portal:
+  nodeSelector: &workerSelector
+    node-role.kubernetes.io/worker: worker
+  resources:
+    requests: {cpu: 50m, memory: 64Mi}
+    limits: {cpu: 250m, memory: 256Mi}
+
+core:
+  nodeSelector: *workerSelector
+  resources:
+    requests: {cpu: 100m, memory: 256Mi}
+    limits: {cpu: "1", memory: 1Gi}
+
+jobservice:
+  nodeSelector: *workerSelector
+  resources:
+    requests: {cpu: 50m, memory: 128Mi}
+    limits: {cpu: 500m, memory: 512Mi}
+
+registry:
+  nodeSelector: *workerSelector
+  registry:
+    resources:
+      requests: {cpu: 100m, memory: 128Mi}
+      limits: {cpu: "1", memory: 512Mi}
+  controller:
+    resources:
+      requests: {cpu: 50m, memory: 64Mi}
+      limits: {cpu: 500m, memory: 256Mi}
+
+trivy:
+  enabled: true
+  nodeSelector: *workerSelector
+  resources:
+    requests: {cpu: 200m, memory: 512Mi}
+    limits: {cpu: "1", memory: 1Gi}
+
+database:
+  type: internal
+  internal:
+    nodeSelector: *workerSelector
+    resources:
+      requests: {cpu: 100m, memory: 256Mi}
+      limits: {cpu: "1", memory: 1Gi}
+
+redis:
+  type: internal
+  internal:
+    nodeSelector: *workerSelector
+    resources:
+      requests: {cpu: 50m, memory: 128Mi}
+      limits: {cpu: 500m, memory: 512Mi}
+
+exporter:
+  nodeSelector: *workerSelector
+  resources:
+    requests: {cpu: 20m, memory: 64Mi}
+    limits: {cpu: 200m, memory: 256Mi}

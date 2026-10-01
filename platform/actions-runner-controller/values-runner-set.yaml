@@ -1,0 +1,182 @@
+githubConfigUrl: https://github.com/ProjectLanternDI3P1P2
+githubConfigSecret: arc-github-app
+
+runnerScaleSetName: lantern-k3s-builders
+minRunners: 0
+maxRunners: 2
+
+controllerServiceAccount:
+  namespace: arc-systems
+  name: arc-gha-rs-controller
+
+listenerTemplate:
+  spec:
+    securityContext:
+      runAsNonRoot: true
+      seccompProfile:
+        type: RuntimeDefault
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: node-role.kubernetes.io/control-plane
+                  operator: DoesNotExist
+    containers:
+      - name: listener
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          capabilities:
+            drop:
+              - ALL
+        resources:
+          requests:
+            cpu: 50m
+            memory: 128Mi
+          limits:
+            cpu: 250m
+            memory: 256Mi
+
+# This is an explicit Docker-in-Docker template because Harbor needs a private
+# CA and a fixed in-pod hostname mapping. ARC's shorthand dind mode cannot be
+# safely extended with those mounts.
+template:
+  spec:
+    automountServiceAccountToken: false
+    restartPolicy: Never
+    hostAliases:
+      - ip: 10.43.236.141
+        hostnames:
+          - registry.lantern.diiage
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: node-role.kubernetes.io/control-plane
+                  operator: DoesNotExist
+    initContainers:
+      - name: prepare-ca-bundle
+        image: ghcr.io/actions/actions-runner:2.337.0
+        command:
+          - /bin/sh
+          - -ec
+          - |
+            cp /etc/ssl/certs/ca-certificates.crt /ca-bundle/ca-certificates.crt
+            cat /harbor-ca/ca.crt >> /ca-bundle/ca-certificates.crt
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 1001
+          capabilities:
+            drop:
+              - ALL
+        volumeMounts:
+          - name: harbor-ca
+            mountPath: /harbor-ca
+            readOnly: true
+          - name: ca-bundle
+            mountPath: /ca-bundle
+      - name: init-dind-externals
+        image: ghcr.io/actions/actions-runner:2.337.0
+        command:
+          - cp
+          - -r
+          - /home/runner/externals/.
+          - /home/runner/tmpDir/
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 1001
+          capabilities:
+            drop:
+              - ALL
+        volumeMounts:
+          - name: dind-externals
+            mountPath: /home/runner/tmpDir
+      - name: dind
+        image: docker:28.5.1-dind
+        args:
+          - dockerd
+          - --host=unix:///var/run/docker.sock
+          - --group=$(DOCKER_GROUP_GID)
+        env:
+          - name: DOCKER_GROUP_GID
+            value: "123"
+        restartPolicy: Always
+        securityContext:
+          privileged: true
+        startupProbe:
+          exec:
+            command:
+              - docker
+              - info
+          failureThreshold: 24
+          periodSeconds: 5
+        resources:
+          requests:
+            cpu: 500m
+            memory: 1Gi
+          limits:
+            cpu: "2"
+            memory: 4Gi
+        volumeMounts:
+          - name: work
+            mountPath: /home/runner/_work
+          - name: dind-sock
+            mountPath: /var/run
+          - name: dind-externals
+            mountPath: /home/runner/externals
+          - name: harbor-ca
+            mountPath: /etc/docker/certs.d/registry.lantern.diiage/ca.crt
+            subPath: ca.crt
+            readOnly: true
+    containers:
+      - name: runner
+        image: ghcr.io/actions/actions-runner:2.337.0
+        command:
+          - /home/runner/run.sh
+        env:
+          - name: DOCKER_HOST
+            value: unix:///var/run/docker.sock
+          - name: RUNNER_WAIT_FOR_DOCKER_IN_SECONDS
+            value: "120"
+          - name: SSL_CERT_FILE
+            value: /etc/ssl/certs/ca-certificates.crt
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 1001
+          capabilities:
+            drop:
+              - ALL
+        resources:
+          requests:
+            cpu: 250m
+            memory: 512Mi
+          limits:
+            cpu: "2"
+            memory: 2Gi
+        volumeMounts:
+          - name: work
+            mountPath: /home/runner/_work
+          - name: dind-sock
+            mountPath: /var/run
+          - name: ca-bundle
+            mountPath: /etc/ssl/certs/ca-certificates.crt
+            subPath: ca-certificates.crt
+            readOnly: true
+    volumes:
+      - name: work
+        emptyDir:
+          sizeLimit: 20Gi
+      - name: dind-sock
+        emptyDir: {}
+      - name: dind-externals
+        emptyDir: {}
+      - name: harbor-ca
+        configMap:
+          name: harbor-ca
+      - name: ca-bundle
+        emptyDir: {}
