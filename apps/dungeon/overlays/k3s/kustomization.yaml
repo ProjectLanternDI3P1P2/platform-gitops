@@ -13,4 +13,4 @@ patches:
 images:
   - name: registry.lantern.diiage/lantern/backend
     newName: registry.lantern.diiage/lantern/dungeon-backend
-    newTag: dev-2851068912f7
+    newTag: dev-562bde677f05
