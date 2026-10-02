@@ -1,0 +1,552 @@
+# T06.5 — Autoscaling de Traefik sur K3s
+
+Date : 1er octobre 2026
+
+## 1. Objet et état de validation
+
+Cette documentation reprend la configuration et les résultats transmis pendant la session. Elle décrit la migration de Traefik d’un DaemonSet vers un Deployment piloté par un HorizontalPodAutoscaler (HPA).
+
+**État constaté : la migration est terminée, trois pods sont prêts et le HPA reçoit les métriques CPU. La montée et la descente automatiques sous charge restent à tester.**
+
+Le YAML ci-dessous reprend la configuration proposée puis appliquée pendant la session. Aucun export complet de la configuration effective après application n’a été fourni ; les sorties Kubernetes confirment le Deployment, le HPA, ses bornes et sa cible CPU.
+
+| Élément | État |
+|---|---|
+| Deployment Traefik | Déployé avec succès |
+| Pods Traefik | 3 prêts, un par worker lors du contrôle |
+| Ancien DaemonSet | Supprimé par la migration |
+| HPA | Présent, cible Deployment/traefik |
+| Bornes HPA | Minimum 3, maximum 6 |
+| Métrique CPU | Disponible, cible 70 % |
+| Test de charge k6 | Procédure préparée ; exécution non confirmée |
+| Augmentation puis réduction des réplicas | Non démontrées à ce stade |
+| Backends et contrôles de santé HAProxy | À vérifier ; aucune sortie fournie |
+| Retour arrière | Procédure documentée ; non exécutée |
+
+## 2. Environnement
+
+| Élément | Valeur |
+|---|---|
+| Distribution | K3s |
+| Version des workers | v1.36.4+k3s1 |
+| Namespace Traefik | kube-system |
+| Ressource de configuration | HelmChartConfig/traefik |
+| Chart K3s | traefik-40.1.4+up40.1.0.tgz |
+| Répertoire de travail utilisé | /opt/traefik |
+| Fichier appliqué | /opt/traefik/traefik-autoscaling.yaml |
+| Sélecteur des workers | node-role.kubernetes.io/worker=worker |
+
+Workers observés :
+
+| Nœud | État | Rôle |
+|---|---|---|
+| kube-worker-01 | Ready | worker |
+| kube-worker-02 | Ready | worker |
+| kube-worker-04 | Ready | worker |
+
+Chemin du trafic envisagé : machine cliente → HAProxy sur pfSense → Service Traefik sur les workers → pods Traefik → application.
+
+Les adresses de confiance conservées pour les en-têtes `X-Forwarded-*` sur l’entrée `web` sont :
+
+| Adresse | Description fournie |
+|---|---|
+| 192.168.0.1/32 | pfSense 1 |
+| 192.168.0.2/32 | pfSense 2 |
+| 192.168.0.254/32 | VIP CARP du LAN K3s |
+
+Cette liste autorise la confiance dans les en-têtes transmis par ces adresses ; elle ne constitue pas un filtrage réseau des clients autorisés à se connecter.
+
+## 3. Configuration initiale et choix d’architecture
+
+La configuration initiale utilisait un DaemonSet, avec un pod Traefik par worker éligible :
+
+```yaml
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: traefik
+  namespace: kube-system
+spec:
+  valuesContent: |-
+    deployment:
+      kind: DaemonSet
+    nodeSelector:
+      node-role.kubernetes.io/worker: worker
+    service:
+      spec:
+        externalTrafficPolicy: Local
+    ports:
+      web:
+        forwardedHeaders:
+          trustedIPs:
+            - 192.168.0.1/32
+            - 192.168.0.2/32
+            - 192.168.0.254/32
+```
+
+Les commentaires initiaux évoquaient deux workers, mais les vérifications ont montré trois workers et trois pods Traefik.
+
+Un DaemonSet adapte le nombre de pods au nombre de nœuds éligibles, pas à la charge CPU. Il ne peut pas être piloté par un HPA. Pour répondre au choix d’un autoscaling selon la charge, Traefik a donc été converti en Deployment.
+
+La politique `externalTrafficPolicy: Local` a été conservée. Elle limite le traitement du trafic externe aux endpoints locaux et évite le SNAT associé au transfert entre nœuds dans ce chemin réseau. L’adresse vue par Traefik dépend aussi du comportement du proxy HAProxy placé en amont ; l’IP du client d’origine peut être transportée dans les en-têtes de confiance.
+
+Avec `Local`, HAProxy doit retirer un worker du trafic lorsque celui-ci ne dispose plus d’un endpoint Traefik local prêt. Les trois workers doivent figurer dans les backends si l’on souhaite les utiliser tous.
+
+## 4. Vérifications préalables effectuées
+
+### 4.1 Workers
+
+```bash
+kubectl get nodes -l node-role.kubernetes.io/worker=worker
+```
+
+Résultat : `kube-worker-01`, `kube-worker-02` et `kube-worker-04` étaient `Ready`, tous en version `v1.36.4+k3s1`.
+
+### 4.2 Métriques
+
+```bash
+kubectl -n kube-system top pods \
+  -l app.kubernetes.io/name=traefik
+```
+
+Avant migration :
+
+| Pod | CPU | Mémoire |
+|---|---|---|
+| traefik-blljm | 1m | 133Mi |
+| traefik-jnjkd | 1m | 28Mi |
+| traefik-rhht8 | 1m | 32Mi |
+
+Cette commande a confirmé la disponibilité des métriques. Aucune installation supplémentaire de Metrics Server n’a été nécessaire pendant la session.
+
+### 4.3 Version du chart
+
+```bash
+kubectl -n kube-system get helmchart traefik \
+  -o jsonpath='{.spec.chart}{"\n"}{.spec.version}{"\n"}'
+```
+
+Sortie :
+
+```text
+https://%{KUBERNETES_API}%/static/charts/traefik-40.1.4+up40.1.0.tgz
+```
+
+La lecture locale des valeurs du chart avait aussi été proposée, sans sortie communiquée :
+
+```bash
+sudo tar -xOf \
+  /var/lib/rancher/k3s/server/static/charts/traefik-40.1.4+up40.1.0.tgz \
+  traefik/values.yaml \
+  | grep -A 30 -E '^(deployment|autoscaling):'
+```
+
+La réconciliation réussie par la suite a confirmé que la configuration appliquée permettait de créer le Deployment et le HPA sur cette installation.
+
+## 5. Configuration finale
+
+Fichier : `/opt/traefik/traefik-autoscaling.yaml`.
+
+```yaml
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: traefik
+  namespace: kube-system
+spec:
+  valuesContent: |-
+    deployment:
+      kind: Deployment
+      replicas: null
+
+    nodeSelector:
+      node-role.kubernetes.io/worker: worker
+
+    resources:
+      requests:
+        cpu: 200m
+        memory: 192Mi
+      limits:
+        memory: 512Mi
+
+    autoscaling:
+      enabled: true
+      minReplicas: 3
+      maxReplicas: 6
+      metrics:
+        - type: Resource
+          resource:
+            name: cpu
+            target:
+              type: Utilization
+              averageUtilization: 70
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 300
+          policies:
+            - type: Pods
+              value: 1
+              periodSeconds: 60
+
+    topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: DoNotSchedule
+        labelSelector:
+          matchLabels:
+            app.kubernetes.io/name: traefik
+
+    updateStrategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxUnavailable: 0
+        maxSurge: 1
+
+    service:
+      spec:
+        externalTrafficPolicy: Local
+
+    ports:
+      web:
+        forwardedHeaders:
+          trustedIPs:
+            - 192.168.0.1/32
+            - 192.168.0.2/32
+            - 192.168.0.254/32
+```
+
+### 5.1 Paramètres et conséquences
+
+| Paramètre | Explication |
+|---|---|
+| Deployment | Type de contrôleur compatible avec le HPA |
+| replicas: null | Laisser le chart omettre le nombre fixe de réplicas pour le HPA |
+| minReplicas: 3 | Minimum de réplicas demandés ; ne garantit pas trois pods prêts en cas de panne |
+| maxReplicas: 6 | Maximum demandé par le HPA ; une mise à jour peut temporairement ajouter un pod via maxSurge |
+| requests.cpu: 200m | Demande CPU de 0,2 cœur par pod et base de calcul de l’utilisation |
+| averageUtilization: 70 | Cible CPU moyenne d’environ 140m par pod avec cette demande |
+| requests.memory: 192Mi | Demande mémoire initiale pour le placement ; à ajuster avec des mesures représentatives |
+| limits.memory: 512Mi | Limite mémoire par conteneur Traefik |
+| scaleDown: 300 s | Fenêtre de stabilisation de la réduction des réplicas |
+| policy: 1 pod / 60 s | Limite la vitesse de réduction à un pod par minute |
+| maxSkew: 1 | Contraint l’écart de nombre de pods entre nœuds lors du placement |
+| maxUnavailable: 0, maxSurge: 1 | Stratégie des futures mises à jour du Deployment |
+
+La configuration ne définit pas de limite CPU explicite. Les éventuelles valeurs héritées du chart ou politiques du namespace se vérifient sur les pods effectifs.
+
+Le seuil CPU n’est pas un pourcentage du CPU des workers. À `200m` demandés, 70 % représente `140m`, soit 0,14 cœur par pod en moyenne. Le HPA tient aussi compte des fenêtres d’observation, de la disponibilité des métriques et de sa tolérance.
+
+La contrainte de répartition vise un placement équilibré lorsque les trois workers sont disponibles. Elle ne garantit pas en permanence un pod prêt sur chacun lors des pannes, suppressions ou réductions. Les contrôles HAProxy restent indispensables.
+
+Le HPA ne crée pas de machines et ne garantit pas que les nouveaux pods pourront être placés. Les workers doivent disposer de ressources suffisantes, y compris pendant les mises à jour.
+
+## 6. Application et migration
+
+Une sauvegarde avait été recommandée avant modification ; sa réalisation n’a pas été confirmée :
+
+```bash
+kubectl -n kube-system get helmchartconfig traefik -o yaml \
+  > traefik-avant-autoscaling.yaml
+```
+
+Exécutée après migration, cette commande sauvegarde la nouvelle configuration, pas l’ancienne.
+
+Le fichier a été édité avec les droits administrateur depuis `/opt/traefik` :
+
+```bash
+sudo nano traefik-autoscaling.yaml
+kubectl apply -f traefik-autoscaling.yaml
+```
+
+Réponse observée :
+
+```text
+helmchartconfig.helm.cattle.io/traefik configured
+```
+
+Puis :
+
+```bash
+kubectl -n kube-system rollout status deployment/traefik \
+  --timeout=180s
+```
+
+Sortie observée :
+
+```text
+Waiting for deployment "traefik" rollout to finish: 1 of 3 updated replicas are available...
+Waiting for deployment "traefik" rollout to finish: 2 of 3 updated replicas are available...
+deployment "traefik" successfully rolled out
+```
+
+La migration DaemonSet → Deployment peut interrompre temporairement le trafic. Aucun test de continuité applicative n’a été communiqué ; le succès du rollout ne prouve pas une absence de coupure.
+
+Si un fichier existant sous `/var/lib/rancher/k3s/server/manifests/` gère ce HelmChartConfig, il faut maintenir ce fichier source cohérent avec la configuration appliquée. La présence d’un tel fichier n’a pas été confirmée.
+
+## 7. Résultats observés après migration
+
+### 7.1 Pods
+
+```bash
+kubectl -n kube-system get pods \
+  -l app.kubernetes.io/name=traefik -o wide
+```
+
+| Pod | Prêt | État | Redémarrages | IP à l’observation | Worker |
+|---|---|---|---|---|---|
+| traefik-bc54cdd79-b7jff | 1/1 | Running | 0 | 10.42.2.34 | kube-worker-04 |
+| traefik-bc54cdd79-hmtj8 | 1/1 | Running | 0 | 10.42.3.49 | kube-worker-02 |
+| traefik-bc54cdd79-qctqv | 1/1 | Running | 0 | 10.42.1.90 | kube-worker-01 |
+
+Ces noms et IP sont un instantané ; ils changent lors des recréations.
+
+### 7.2 Ancien DaemonSet
+
+```bash
+kubectl -n kube-system get daemonset traefik
+```
+
+```text
+Error from server (NotFound): daemonsets.apps "traefik" not found
+```
+
+Ce résultat est attendu : Traefik est désormais un Deployment.
+
+### 7.3 HPA
+
+```bash
+kubectl -n kube-system get hpa traefik -w
+```
+
+| Âge du HPA | CPU affiché | Minimum | Maximum | Réplicas |
+|---|---|---|---|---|
+| 39 s | <unknown>/70% | 3 | 6 | 3 |
+| 45 s | 1%/70% | 3 | 6 | 3 |
+| 60 s | 0%/70% | 3 | 6 | 3 |
+
+Le `<unknown>` initial était transitoire pendant la collecte des métriques des nouveaux pods. Le passage à une valeur numérique confirme la réception des mesures par le HPA.
+
+### 7.4 Ressources au repos
+
+| Pod | CPU | Mémoire |
+|---|---|---|
+| traefik-bc54cdd79-b7jff | 1m | 25Mi |
+| traefik-bc54cdd79-hmtj8 | 1m | 24Mi |
+| traefik-bc54cdd79-qctqv | 1m | 23Mi |
+
+Le `0%` affiché par le HPA est cohérent avec l’arrondi d’une utilisation très faible. Avec cette charge, le maintien à trois réplicas est normal.
+
+## 8. Commandes de surveillance et correction rencontrée
+
+La commande initialement proposée ci-dessous a échoué :
+
+```bash
+kubectl -n kube-system get deployment,daemonset,hpa -w
+```
+
+Erreur : `you may only specify a single resource type`.
+
+Pour surveiller plusieurs types de ressources, utiliser un rafraîchissement externe :
+
+```bash
+watch -n 2 'kubectl -n kube-system get deployment,daemonset,hpa'
+```
+
+Pour suivre un seul type en continu :
+
+```bash
+kubectl -n kube-system get hpa traefik -w
+```
+
+```bash
+kubectl -n kube-system get pods \
+  -l app.kubernetes.io/name=traefik -o wide -w
+```
+
+Pour les ressources :
+
+```bash
+watch -n 2 'kubectl -n kube-system top pods -l app.kubernetes.io/name=traefik'
+```
+
+Utiliser des terminaux séparés et `Ctrl+C` pour arrêter la surveillance.
+
+## 9. Test de charge préparé — à exécuter
+
+### 9.1 Objectif
+
+Valider l’augmentation puis la réduction du nombre de pods sous une charge représentative, en surveillant les latences et les erreurs.
+
+Lancer k6 depuis une machine extérieure au cluster, disposant de Docker et d’un accès au nom DNS de l’application. Le test doit traverser HAProxy et Traefik. Choisir une route GET sans effet de bord, répondant normalement avec un statut 200.
+
+Le domaine ci-dessous est un exemple à remplacer. Vérifier que sa résolution DNS conduit bien au point d’entrée HAProxy et que le certificat TLS est valide.
+
+```bash
+curl -I https://app.ton-domaine.fr/
+```
+
+Si l’application ne prend pas en charge HEAD, vérifier avec un GET :
+
+```bash
+curl -sS -o /dev/null -w '%{http_code}\n' https://app.ton-domaine.fr/
+```
+
+### 9.2 Script test-traefik.js
+
+```javascript
+import http from 'k6/http';
+
+const url = __ENV.URL;
+if (!url) {
+  throw new Error('La variable URL est obligatoire');
+}
+
+http.setResponseCallback(http.expectedStatuses(200));
+
+export const options = {
+  discardResponseBodies: true,
+  scenarios: {
+    trafic: {
+      executor: 'constant-arrival-rate',
+      rate: Number(__ENV.RATE || 10),
+      timeUnit: '1s',
+      duration: '2m',
+      preAllocatedVUs: 20,
+      maxVUs: 100,
+    },
+  },
+  thresholds: {
+    http_req_failed: ['rate<0.01'],
+    http_req_duration: ['p(95)<500'],
+    dropped_iterations: ['count==0'],
+  },
+};
+
+export default function () {
+  http.get(url, {
+    redirects: 0,
+    timeout: '5s',
+  });
+}
+```
+
+Le script effectue une requête par itération, sans suivre les redirections. `RATE=10` vise donc 10 requêtes par seconde. Seul le statut 200 est considéré comme réussi pour cette route.
+
+Les seuils de 500 ms au p95 et de moins de 1 % d’erreurs sont des exemples à adapter aux objectifs applicatifs. Ils signalent un échec du test ; ils ne sont pas configurés ici pour interrompre automatiquement la charge dès leur dépassement.
+
+### 9.3 Exécution
+
+```bash
+docker run --rm -i \
+  -e URL="https://app.ton-domaine.fr/" \
+  -e RATE=10 \
+  grafana/k6 run - < test-traefik.js
+```
+
+Augmenter progressivement à 50, puis 100 requêtes/s si les résultats restent acceptables. Pour des comparaisons reproductibles, noter la version de k6 utilisée et conserver la même version entre exécutions.
+
+Un débit de 100 requêtes/s ne garantit pas que Traefik dépasse sa cible CPU. Ajuster la charge à la capacité du système et à l’objectif du test. Les deux minutes constituent un premier palier ; prolonger un palier stable si nécessaire pour observer l’ensemble de la réaction du HPA.
+
+Pendant le test, suivre le HPA, les pods, les ressources Traefik, HAProxy, l’application et la machine génératrice. Après arrêt du trafic, continuer l’observation au-delà de cinq minutes pour voir la réduction progressive.
+
+### 9.4 Lecture des résultats
+
+| Mesure | Interprétation |
+|---|---|
+| http_reqs | Nombre et débit de requêtes réellement effectuées |
+| http_req_failed | Taux d’échec selon le statut attendu |
+| http_req_duration p(95) | 95 % des durées de requêtes sont inférieures à cette valeur ; les phases de connexion sont mesurées séparément par k6 |
+| dropped_iterations | Itérations non démarrées au débit prévu |
+| CPU par pod | Charge et éventuel déséquilibre entre workers |
+| Réplicas HPA et pods prêts | Réaction du contrôleur et disponibilité réelle des nouveaux pods |
+
+Des itérations abandonnées peuvent provenir d’un nombre insuffisant d’utilisateurs virtuels, d’un système testé trop lent ou de limites du générateur. Une latence élevée ne suffit pas à conclure que Traefik est le facteur limitant : HAProxy ou l’application peuvent saturer avant lui.
+
+### 9.5 Preuves à conserver pour T06.5
+
+| Palier | Débit demandé | Débit obtenu | p95 | Erreurs | CPU par pod | Réplicas demandés / prêts |
+|---|---|---|---|---|---|---|
+| Repos | Sans charge de test | Non mesuré | Non mesuré | Non mesuré | Environ 1m | 3 / 3 |
+| Test 1 | À renseigner | À renseigner | À renseigner | À renseigner | À renseigner | À renseigner |
+| Test 2 | À renseigner | À renseigner | À renseigner | À renseigner | À renseigner | À renseigner |
+| Après arrêt | Sans charge de test | À renseigner | À renseigner | À renseigner | À renseigner | À renseigner |
+
+Validation attendue : le nombre de réplicas augmente au-dessus de trois lorsque la charge le justifie, les nouveaux pods deviennent prêts, puis le nombre revient progressivement à trois après la baisse de charge.
+
+## 10. Diagnostic
+
+### HPA sans métriques persistantes
+
+```bash
+kubectl -n kube-system describe hpa traefik
+kubectl -n kube-system top pods -l app.kubernetes.io/name=traefik
+```
+
+Examiner les conditions et événements du HPA, la disponibilité de Metrics Server et les requests CPU effectives. Un bref `<unknown>` à la création n’est pas à lui seul une panne.
+
+### Pods Pending ou absence de progression
+
+```bash
+kubectl -n kube-system get pods -l app.kubernetes.io/name=traefik -o wide
+kubectl -n kube-system get events --sort-by=.metadata.creationTimestamp
+```
+
+Vérifier les ressources disponibles, les labels des workers, les taints et les contraintes de placement. Pour un pod concerné, exécuter `kubectl -n kube-system describe pod NOM_DU_POD` en remplaçant le nom.
+
+### Contrôle de la configuration effective
+
+```bash
+kubectl -n kube-system get helmchartconfig traefik -o yaml
+kubectl -n kube-system get deployment traefik -o yaml
+kubectl -n kube-system get hpa traefik -o yaml
+```
+
+Ces exports permettent de confirmer les ressources, les contraintes de répartition et le comportement HPA effectivement générés, au-delà des preuves fournies dans la session.
+
+## 11. Retour arrière vers le DaemonSet
+
+Cette opération n’a pas été effectuée pendant la session. Elle remplace à nouveau le contrôleur et peut provoquer une interruption.
+
+Si une sauvegarde antérieure à la migration existe, la réappliquer :
+
+```bash
+kubectl apply -f traefik-avant-autoscaling.yaml
+```
+
+Sinon, recréer un fichier à partir du YAML initial de la section 3 et ajouter, au même niveau que `deployment`, le bloc explicite :
+
+```yaml
+    autoscaling:
+      enabled: false
+```
+
+Le contrôleur doit alors utiliser `deployment.kind: DaemonSet`. Restaurer aussi le fichier source éventuel dans les manifests K3s.
+
+Vérifier la réconciliation :
+
+```bash
+kubectl -n kube-system get daemonset,deployment,hpa
+kubectl -n kube-system get pods -l app.kubernetes.io/name=traefik -o wide
+```
+
+Résultat attendu : retour du DaemonSet avec un pod par worker éligible, disparition du Deployment et du HPA gérés par cette configuration, et accès applicatif fonctionnel via HAProxy.
+
+Ne pas utiliser la simple suppression du HelmChartConfig comme équivalent d’une restauration : elle supprime les personnalisations et ne garantit pas le retour exact à la configuration précédente.
+
+## 12. Bilan de T06.5
+
+**Configuration de l’autoscaling réalisée et fonctionnement de la collecte CPU confirmé.** Traefik fonctionne désormais en Deployment, avec trois pods prêts répartis sur les trois workers observés. Le HPA cible une utilisation CPU moyenne de 70 %, avec un minimum de trois et un maximum de six réplicas.
+
+La validation de capacité reste ouverte : les preuves de montée et descente sous charge, la vérification des backends HAProxy et la validation applicative doivent encore être ajoutées au dossier.
+
+## 13. Références
+
+- [Kubernetes — Horizontal Pod Autoscaling](https://kubernetes.io/docs/concepts/workloads/autoscaling/horizontal-pod-autoscale/)
+- [Kubernetes — Pod Topology Spread Constraints](https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/)
+- [Kubernetes — Virtual IPs and Service Proxies](https://kubernetes.io/docs/reference/networking/virtual-ips/)
+- [K3s — Helm et HelmChartConfig](https://docs.k3s.io/add-ons/helm)
+- [Traefik Helm chart — Exemples](https://github.com/traefik/traefik-helm-chart/blob/master/EXAMPLES.md)
+- [Grafana k6 — Constant arrival rate](https://grafana.com/docs/k6/latest/using-k6/scenarios/executors/constant-arrival-rate/)
+- [Grafana k6 — Métriques](https://grafana.com/docs/k6/latest/using-k6/metrics/reference/)
+
+Les liens vers les documentations courantes peuvent évoluer ; la version du chart constatée dans cet environnement est enregistrée en section 2.
