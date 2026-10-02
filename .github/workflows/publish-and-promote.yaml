@@ -42,11 +42,11 @@ jobs:
           set -euo pipefail
           short_sha="$(git rev-parse --short=12 HEAD)"
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
-            tags="${IMAGE}:${GITHUB_REF_NAME}"$'\n'"${IMAGE}:main-latest"
-            deploy_tag=""
+            deploy_tag="${GITHUB_REF_NAME}"
+            tags="${IMAGE}:${deploy_tag}"
           else
-            deploy_tag="main-${short_sha}"
-            tags="${IMAGE}:${deploy_tag}"$'\n'"${IMAGE}:main-latest"
+            deploy_tag=""
+            tags="${IMAGE}:main-${short_sha}"$'\n'"${IMAGE}:main-latest"
           fi
           {
             echo "deploy_tag=${deploy_tag}"
@@ -87,12 +87,12 @@ jobs:
         run: |
           set -euo pipefail
           while IFS= read -r tag; do
-            docker buildx imagetools inspect "$tag" >/main/null
+            docker buildx imagetools inspect "$tag" >/dev/null
             echo "Verified ${tag}"
           done <<< "${TAGS}"
 
       - name: Request GitOps promotion
-        if: github.ref == 'refs/heads/main'
+        if: github.ref_type == 'tag'
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           github-token: ${{ secrets.GITOPS_DISPATCH_TOKEN }}
