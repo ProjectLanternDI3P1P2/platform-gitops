@@ -21,7 +21,7 @@ const applications = {
     image: "registry.lantern.diiage/lantern/player-backend",
     repository: "ProjectLanternDI3P1P2/player-backend",
   },
-  progression: {
+  leaderboard: {
     image: "registry.lantern.diiage/lantern/leaderboard-backend",
     repository: "ProjectLanternDI3P1P2/leaderboard-backend",
   },
