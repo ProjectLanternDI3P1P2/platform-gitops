@@ -14,4 +14,4 @@ patches:
 # À REMPLACER par le vrai tag publié sur Docker Hub avant de merger.
 images:
   - name: diiageplayerimage/frontend-game-image
-    newTag: dev-REPLACE_ME
+    newTag: dev-13d0245
