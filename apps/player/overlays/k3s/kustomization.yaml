@@ -15,6 +15,9 @@ patches:
   # Temporaire : image sur Docker Hub (voir dockerhub-image.yaml).
   - path: dockerhub-image.yaml
 
+  # Base PostgreSQL partagée (ADR-005).
+  - path: shared-database.yaml
+
 # Déployer une nouvelle version = changer le tag. Toujours un tag fixe (vX.Y.Z), jamais "latest".
 images:
   - name: registry.lantern.diiage/lantern/player-backend
