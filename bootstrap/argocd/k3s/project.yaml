@@ -23,3 +23,5 @@ spec:
       server: https://kubernetes.default.svc
     - namespace: frontend-game
       server: https://kubernetes.default.svc
+    - namespace: frontend-public
+      server: https://kubernetes.default.svc

@@ -9,6 +9,8 @@ spec:
     - https://github.com/ProjectLanternDI3P1P2/platform-gitops.git
     - https://grafana.github.io/helm-charts
   destinations:
+    - namespace: argocd
+      server: https://kubernetes.default.svc
     - namespace: default
       server: https://kubernetes.default.svc
     - namespace: monitoring

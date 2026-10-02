@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+spec:
+  template:
+    spec:
+      containers:
+        - name: api
+          env:
+            - name: ConnectionStrings__DefaultConnection
+              value: Host=dungeon-db;Port=5432;Database=dungeon;Username=dungeon
+            - name: Grpc__Player__Address
+              value: http://player-api.player.svc.cluster.local:8081
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: db
+spec:
+  template:
+    spec:
+      containers:
+        - name: postgres
+          env:
+            - name: POSTGRES_DB
+              value: dungeon
+            - name: POSTGRES_USER
+              value: dungeon
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "dungeon", "-d", "dungeon"]
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "dungeon", "-d", "dungeon"]

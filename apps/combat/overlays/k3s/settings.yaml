@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+spec:
+  template:
+    spec:
+      containers:
+        - name: api
+          env:
+            - name: ConnectionStrings__DefaultConnection
+              value: Host=combat-db;Port=5432;Database=combat;Username=combat
+            - name: Grpc__Player__Address
+              value: http://player-api.player.svc.cluster.local:8081
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: db
+spec:
+  template:
+    spec:
+      containers:
+        - name: postgres
+          env:
+            - name: POSTGRES_DB
+              value: combat
+            - name: POSTGRES_USER
+              value: combat
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "combat", "-d", "combat"]
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "combat", "-d", "combat"]

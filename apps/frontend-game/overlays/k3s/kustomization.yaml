@@ -10,8 +10,7 @@ resources:
 patches:
   - path: env.yaml
 
-# Déployer une nouvelle version = changer cette ligne (tag fixe dev-<sha7>, jamais "dev").
-# À REMPLACER par le vrai tag publié sur Docker Hub avant de merger.
+# The promotion workflow replaces this bootstrap tag with dev-<sha12>.
 images:
-  - name: diiageplayerimage/frontend-game-image
-    newTag: dev-13d0245
+  - name: registry.lantern.diiage/lantern/frontend-game
+    newTag: dev-latest
