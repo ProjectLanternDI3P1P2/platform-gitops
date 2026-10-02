@@ -16,3 +16,11 @@ spec:
   schemas:
     - name: player
       owner: player
+    - name: combat
+      owner: combat
+    - name: dungeon
+      owner: dungeon
+    - name: reward
+      owner: reward
+    - name: leaderboard
+      owner: leaderboard
