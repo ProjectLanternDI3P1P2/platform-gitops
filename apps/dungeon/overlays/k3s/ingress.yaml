@@ -1,0 +1,26 @@
+# Traefik routes only the public REST resources owned by Dungeon. The service's
+# gRPC port remains available exclusively through Kubernetes service discovery.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: api-gateway-dungeon
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: api.lantern.diiage
+      http:
+        paths:
+          - path: /api/v1/dungeons
+            pathType: Prefix
+            backend:
+              service:
+                name: dungeon-api
+                port:
+                  name: http
+          - path: /api/v1/dungeon-runs
+            pathType: Prefix
+            backend:
+              service:
+                name: dungeon-api
+                port:
+                  name: http
