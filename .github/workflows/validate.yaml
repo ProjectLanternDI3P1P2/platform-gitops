@@ -1,6 +1,7 @@
 name: Validate GitOps
 
 on:
+  workflow_dispatch:
   pull_request:
     branches: [main]
   push:
@@ -10,6 +11,19 @@ permissions:
   contents: read
 
 jobs:
+  arc-smoke:
+    name: ARC runner smoke test
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: lantern-k3s-builders
+    timeout-minutes: 10
+    steps:
+      - name: Verify runner and Docker daemon
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf 'runner=%s os=%s arch=%s\n' "$RUNNER_NAME" "$RUNNER_OS" "$RUNNER_ARCH"
+          docker version
+
   validate:
     name: Render Kubernetes configuration
     runs-on: ubuntu-24.04
