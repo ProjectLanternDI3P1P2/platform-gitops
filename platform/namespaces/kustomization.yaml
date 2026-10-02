@@ -11,3 +11,4 @@ resources:
   - rewards.yaml
   - progression.yaml
   - frontend-game.yaml
+  - database.yaml

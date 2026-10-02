@@ -1,0 +1,24 @@
+# Un utilisateur PostgreSQL par microservice (ADR-005).
+#
+# Le mot de passe de chaque rôle est dans un Secret du namespace "database", créé à la main
+# (JAMAIS dans Git) : type kubernetes.io/basic-auth, clés "username" et "password",
+# label cnpg.io/reload=true pour que l'opérateur prenne un changement en compte tout de suite.
+#   Secret du rôle player : postgres-role-player
+#
+# Pour ajouter un service : copier ce bloc, changer les noms, et ajouter son schéma dans database.yaml.
+apiVersion: postgresql.cnpg.io/v1
+kind: DatabaseRole
+metadata:
+  name: player
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  cluster:
+    name: postgres
+  name: player
+  comment: Microservice Player
+  login: true
+  # retain : si ce manifest est supprimé par erreur, le rôle et ses tables restent dans la base.
+  databaseRoleReclaimPolicy: retain
+  passwordSecret:
+    name: postgres-role-player

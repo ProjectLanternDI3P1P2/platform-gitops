@@ -1,0 +1,55 @@
+# PostgreSQL commun à tous les microservices (ADR-005), géré par l'opérateur CloudNativePG.
+# 3 instances : 1 primaire (lecture/écriture) + 2 secondaires qui copient le primaire.
+# Si le primaire tombe, un secondaire est promu automatiquement.
+#
+# Services créés par l'opérateur dans le namespace "database" :
+#   postgres-rw  -> toujours le primaire : c'est celui que les microservices utilisent
+#   postgres-ro  -> les secondaires seulement (lecture)
+#   postgres-r   -> toutes les instances (lecture)
+#
+# Les mots de passe ne sont PAS dans Git : voir roles.yaml (Secrets créés à la main).
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: postgres
+spec:
+  description: PostgreSQL commun Lantern
+  instances: 3
+  # Version fixe : c'est l'image fournie et testée avec l'opérateur 1.30.1.
+  # Changer de version de PostgreSQL = décision d'équipe, pas un simple bump.
+  imageName: ghcr.io/cloudnative-pg/postgresql:18.6-system-trixie
+  # Pas de compte "postgres" accessible par le réseau : l'administration se fait depuis un pod.
+  enableSuperuserAccess: false
+
+  bootstrap:
+    initdb:
+      # Une seule base ; chaque microservice a son schéma dedans (voir database.yaml).
+      database: lantern
+      owner: lantern
+
+  storage:
+    # Une seule copie Longhorn par volume : la redondance vient des 3 instances PostgreSQL.
+    storageClass: longhorn-db
+    size: 10Gi
+
+  postgresql:
+    parameters:
+      # Chaque microservice ouvre un pool de connexions : prévoir de la marge.
+      max_connections: "200"
+      shared_buffers: "256MB"
+
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      memory: 1Gi
+
+  affinity:
+    # "required" : jamais deux instances sur le même worker, sinon la panne d'un worker
+    # pourrait emporter plusieurs copies de la base.
+    enablePodAntiAffinity: true
+    podAntiAffinityType: required
+    topologyKey: kubernetes.io/hostname
+    nodeSelector:
+      node-role.kubernetes.io/worker: worker
