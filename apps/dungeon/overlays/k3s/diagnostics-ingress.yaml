@@ -1,0 +1,44 @@
+# Dungeon diagnostics remain namespaced below /dungeon so they cannot collide
+# with the health and OpenAPI endpoints of other gateway services.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: gateway-strip-dungeon-prefix
+spec:
+  stripPrefix:
+    prefixes:
+      - /dungeon
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: api-gateway-dungeon-diagnostics
+  annotations:
+    traefik.ingress.kubernetes.io/router.middlewares: dungeon-dungeon-gateway-strip-dungeon-prefix@kubernetescrd
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: api.lantern.diiage
+      http:
+        paths:
+          - path: /dungeon/health
+            pathType: Prefix
+            backend:
+              service:
+                name: dungeon-api
+                port:
+                  name: http
+          - path: /dungeon/openapi
+            pathType: Prefix
+            backend:
+              service:
+                name: dungeon-api
+                port:
+                  name: http
+          - path: /dungeon/scalar
+            pathType: Prefix
+            backend:
+              service:
+                name: dungeon-api
+                port:
+                  name: http
