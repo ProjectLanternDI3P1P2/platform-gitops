@@ -9,7 +9,7 @@ spec:
         - name: api
           env:
             - name: ConnectionStrings__DefaultConnection
-              value: Host=progression-db;Port=5432;Database=leaderboard;Username=leaderboard
+              value: Host=leaderboard-db;Port=5432;Database=leaderboard;Username=leaderboard
             - name: Grpc__Player__Address
               value: http://player-api.player.svc.cluster.local:8081
 ---

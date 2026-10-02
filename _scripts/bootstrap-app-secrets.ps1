@@ -28,8 +28,8 @@ function Invoke-KubectlJson([hashtable]$Manifest) {
     }
 }
 
-$namespaces = @('combat', 'dungeon', 'frontend-game', 'frontend-public', 'player', 'progression', 'rewards')
-$databaseNamespaces = @('combat', 'dungeon', 'progression', 'rewards')
+$namespaces = @('combat', 'dungeon', 'frontend-game', 'frontend-public', 'leaderboard', 'player', 'rewards')
+$databaseNamespaces = @('combat', 'dungeon', 'leaderboard', 'rewards')
 
 $auth = ConvertTo-Base64Utf8 "$($env:HARBOR_PULL_USERNAME):$($env:HARBOR_PULL_TOKEN)"
 $dockerConfig = @{
@@ -49,15 +49,13 @@ foreach ($namespace in $namespaces) {
         metadata = @{ name = $namespace }
     }
 
-    $existingPullSecret = & kubectl --kubeconfig $KubeConfig -n $namespace get secret harbor-pull --ignore-not-found -o name
-    if (-not $existingPullSecret) {
-        Invoke-KubectlJson @{
-            apiVersion = 'v1'
-            kind = 'Secret'
-            metadata = @{ name = 'harbor-pull'; namespace = $namespace }
-            type = 'kubernetes.io/dockerconfigjson'
-            data = @{ '.dockerconfigjson' = ConvertTo-Base64Utf8 $dockerConfig }
-        }
+    # Always apply this Secret so a robot token rotation repairs every namespace.
+    Invoke-KubectlJson @{
+        apiVersion = 'v1'
+        kind = 'Secret'
+        metadata = @{ name = 'harbor-pull'; namespace = $namespace }
+        type = 'kubernetes.io/dockerconfigjson'
+        data = @{ '.dockerconfigjson' = ConvertTo-Base64Utf8 $dockerConfig }
     }
 }
 
@@ -75,4 +73,4 @@ foreach ($namespace in $databaseNamespaces) {
     }
 }
 
-Write-Host 'Application namespaces and missing pull/database secrets are ready.'
+Write-Host 'Application namespaces, Harbor pull secrets, and missing database secrets are ready.'

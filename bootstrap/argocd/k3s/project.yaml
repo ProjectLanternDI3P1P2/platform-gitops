@@ -1,6 +1,5 @@
-# Projet Argo CD des microservices du cluster K3s.
-# Aucune ressource cluster autorisée (pas de Namespace) ; on ajoutera les
-# namespaces dungeon/combat/rewards/progression au fur et à mesure.
+# Argo CD project for Lantern microservices on K3s.
+# Namespaces are created by the cluster foundation and ApplicationSet sync.
 apiVersion: argoproj.io/v1alpha1
 kind: AppProject
 metadata:
@@ -19,7 +18,7 @@ spec:
       server: https://kubernetes.default.svc
     - namespace: rewards
       server: https://kubernetes.default.svc
-    - namespace: progression
+    - namespace: leaderboard
       server: https://kubernetes.default.svc
     - namespace: frontend-game
       server: https://kubernetes.default.svc

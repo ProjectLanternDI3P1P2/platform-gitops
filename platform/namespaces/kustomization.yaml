@@ -9,5 +9,5 @@ resources:
   - dungeon.yaml
   - combat.yaml
   - rewards.yaml
-  - progression.yaml
+  - leaderboard.yaml
   - frontend-game.yaml
