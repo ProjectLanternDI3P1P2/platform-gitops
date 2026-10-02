@@ -1,0 +1,17 @@
+# TEMPORAIRE : l'image du player est publiée sur Docker Hub (dépôt privé) tant que Harbor
+# n'est pas opérationnel. À retirer, avec le bloc "images" de kustomization.yaml, au retour sur Harbor.
+# Le Secret dockerhub-pull doit exister dans le namespace player (créé à la main, jamais dans Git).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: player-api
+spec:
+  template:
+    spec:
+      imagePullSecrets:
+        - $patch: replace
+        - name: dockerhub-pull
+      containers:
+        - name: player-api
+          # Tag fixe : inutile de re-télécharger l'image à chaque démarrage de pod.
+          imagePullPolicy: IfNotPresent

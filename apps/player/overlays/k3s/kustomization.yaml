@@ -7,11 +7,16 @@ resources:
   - ../../base
   - ingress.yaml
 
-# Mode démo temporaire (voir demo-dev-mode.yaml).
 patches:
+  # Mode démo temporaire (voir demo-dev-mode.yaml).
   - path: demo-dev-mode.yaml
-  
-# The promotion workflow replaces this bootstrap tag with dev-<sha12>.
+  # Origines CORS autorisées (le front).
+  - path: cors.yaml
+  # Temporaire : image sur Docker Hub (voir dockerhub-image.yaml).
+  - path: dockerhub-image.yaml
+
+# Déployer une nouvelle version = changer le tag. Toujours un tag fixe (vX.Y.Z), jamais "latest".
 images:
   - name: registry.lantern.diiage/lantern/player-backend
-    newTag: dev-latest
+    newName: diiageplayerimage/player-image
+    newTag: v1.3.0
