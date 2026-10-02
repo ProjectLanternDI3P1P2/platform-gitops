@@ -1,8 +1,9 @@
 # Application delivery through Harbor and Argo CD
 
 Application repositories call the reusable `publish-and-promote.yaml` workflow.
-A merge to `main` builds an immutable `main-<sha12>` image on the private ARC
-runner, pushes it to Harbor, and sends a validated `promote-image` repository
+A merge to `main` builds `main-<sha12>` and `main-latest` images on the private
+ARC runner and pushes them to Harbor without deploying. A release tag `vX.Y.Z`
+builds the `vX.Y.Z` image and sends a validated `promote-image` repository
 dispatch to this repository. The `promote-image.yaml` workflow changes only the
 matching Kustomize image tag on `main`. Argo CD then performs the deployment.
 
