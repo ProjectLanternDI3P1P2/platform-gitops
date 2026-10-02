@@ -1,0 +1,112 @@
+name: Reusable - Publish and promote image
+
+on:
+  workflow_call:
+    inputs:
+      application:
+        required: true
+        type: string
+      image:
+        required: true
+        type: string
+    secrets:
+      HARBOR_USERNAME:
+        required: true
+      HARBOR_TOKEN:
+        required: true
+      GITOPS_DISPATCH_TOKEN:
+        required: true
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  publish:
+    runs-on: lantern-k3s-builders
+    env:
+      REGISTRY: registry.lantern.diiage
+      IMAGE: ${{ inputs.image }}
+      APPLICATION: ${{ inputs.application }}
+      GITOPS_REPOSITORY: ProjectLanternDI3P1P2/platform-gitops
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Compute immutable tags
+        id: image
+        shell: bash
+        run: |
+          set -euo pipefail
+          short_sha="$(git rev-parse --short=12 HEAD)"
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            tags="${IMAGE}:${GITHUB_REF_NAME}"$'\n'"${IMAGE}:main-latest"
+            deploy_tag=""
+          else
+            deploy_tag="dev-${short_sha}"
+            tags="${IMAGE}:${deploy_tag}"$'\n'"${IMAGE}:dev-latest"
+          fi
+          {
+            echo "deploy_tag=${deploy_tag}"
+            echo "tags<<EOF"
+            echo "${tags}"
+            echo "EOF"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+        with:
+          driver: docker
+
+      - name: Log in to Harbor
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.HARBOR_USERNAME }}
+          password: ${{ secrets.HARBOR_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.image.outputs.tags }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          secrets: |
+            github_token=${{ github.token }}
+
+      - name: Verify published image
+        shell: bash
+        env:
+          TAGS: ${{ steps.image.outputs.tags }}
+        run: |
+          set -euo pipefail
+          while IFS= read -r tag; do
+            docker buildx imagetools inspect "$tag" >/dev/null
+            echo "Verified ${tag}"
+          done <<< "${TAGS}"
+
+      - name: Request GitOps promotion
+        if: github.ref == 'refs/heads/dev'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          github-token: ${{ secrets.GITOPS_DISPATCH_TOKEN }}
+          script: |
+            const [owner, repo] = process.env.GITOPS_REPOSITORY.split('/');
+            await github.rest.repos.createDispatchEvent({
+              owner,
+              repo,
+              event_type: 'promote-image',
+              client_payload: {
+                application: process.env.APPLICATION,
+                image: process.env.IMAGE,
+                tag: '${{ steps.image.outputs.deploy_tag }}',
+                source_repository: context.repo.owner + '/' + context.repo.repo,
+                source_revision: context.sha
+              }
+            });

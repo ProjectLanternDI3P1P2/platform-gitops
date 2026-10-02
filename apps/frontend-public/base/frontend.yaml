@@ -1,15 +1,10 @@
-# Client de jeu (Nuxt, serveur Node). Port 3000 : pages HTML et /healthz.
-# Le navigateur appelle l'API directement : l'adresse de l'API (définie dans
-# overlays/k3s/env.yaml) doit être joignable depuis le poste du joueur.
 apiVersion: v1
 kind: Service
 metadata:
-  name: frontend-game
-  labels:
-    app.kubernetes.io/name: frontend-game
+  name: frontend-public
 spec:
   selector:
-    app.kubernetes.io/name: frontend-game
+    app.kubernetes.io/name: frontend-public
   ports:
     - name: http
       port: 3000
@@ -18,42 +13,37 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: frontend-game
-  labels:
-    app.kubernetes.io/name: frontend-game
+  name: frontend-public
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app.kubernetes.io/name: frontend-game
+      app.kubernetes.io/name: frontend-public
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: frontend-game
+        app.kubernetes.io/name: frontend-public
     spec:
       imagePullSecrets:
         - name: harbor-pull
       nodeSelector:
         node-role.kubernetes.io/worker: worker
-      topologySpreadConstraints:
-        - maxSkew: 1
-          topologyKey: kubernetes.io/hostname
-          whenUnsatisfiable: ScheduleAnyway
-          labelSelector:
-            matchLabels:
-              app.kubernetes.io/name: frontend-game
       securityContext:
         runAsNonRoot: true
-        runAsUser: 1000
         seccompProfile:
           type: RuntimeDefault
       containers:
-        - name: frontend-game
-          image: registry.lantern.diiage/lantern/frontend-game:dev-bootstrap
+        - name: frontend-public
+          image: registry.lantern.diiage/lantern/frontend-public:dev-bootstrap
           imagePullPolicy: Always
           ports:
             - name: http
               containerPort: 3000
+          env:
+            - name: NUXT_PUBLIC_API_GATEWAY_URL
+              value: http://player.lantern.diiage
+            - name: NUXT_PUBLIC_SITE_URL
+              value: http://public.lantern.diiage
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true

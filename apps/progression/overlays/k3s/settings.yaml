@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+spec:
+  template:
+    spec:
+      containers:
+        - name: api
+          env:
+            - name: ConnectionStrings__DefaultConnection
+              value: Host=progression-db;Port=5432;Database=leaderboard;Username=leaderboard
+            - name: Grpc__Player__Address
+              value: http://player-api.player.svc.cluster.local:8081
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: db
+spec:
+  template:
+    spec:
+      containers:
+        - name: postgres
+          env:
+            - name: POSTGRES_DB
+              value: leaderboard
+            - name: POSTGRES_USER
+              value: leaderboard
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "leaderboard", "-d", "leaderboard"]
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "leaderboard", "-d", "leaderboard"]

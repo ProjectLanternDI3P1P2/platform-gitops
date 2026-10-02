@@ -1,13 +1,10 @@
-# API Player (.NET 10). Ports : 8080 = REST, 8081 = gRPC (interne au cluster).
 apiVersion: v1
 kind: Service
 metadata:
-  name: player-api
-  labels:
-    app.kubernetes.io/name: player-api
+  name: api
 spec:
   selector:
-    app.kubernetes.io/name: player-api
+    app.kubernetes.io/name: api
   ports:
     - name: http
       port: 8080
@@ -19,39 +16,28 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: player-api
-  labels:
-    app.kubernetes.io/name: player-api
+  name: api
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: player-api
+      app.kubernetes.io/name: api
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: player-api
+        app.kubernetes.io/name: api
     spec:
       imagePullSecrets:
         - name: harbor-pull
       nodeSelector:
         node-role.kubernetes.io/worker: worker
-      topologySpreadConstraints:
-        - maxSkew: 1
-          topologyKey: kubernetes.io/hostname
-          whenUnsatisfiable: ScheduleAnyway
-          labelSelector:
-            matchLabels:
-              app.kubernetes.io/name: player-api
       securityContext:
         runAsNonRoot: true
-        runAsUser: 1654
         seccompProfile:
           type: RuntimeDefault
       containers:
-        - name: player-api
-          # le tag est fixé dans overlays/k3s/kustomization.yaml
-          image: registry.lantern.diiage/lantern/player-backend:dev-bootstrap
+        - name: api
+          image: registry.lantern.diiage/lantern/backend:dev-bootstrap
           imagePullPolicy: Always
           ports:
             - name: http
@@ -60,11 +46,13 @@ spec:
               containerPort: 8081
           env:
             - name: ASPNETCORE_ENVIRONMENT
-              value: Production
+              value: Development
             - name: ConnectionStrings__DefaultConnection
-              value: Host=player-db;Port=5432;Database=player;Username=player
+              value: Host=db;Port=5432;Database=app;Username=app
             - name: ConnectionStrings__PasswordFile
               value: /run/secrets/db/password
+            - name: RabbitMq__Enabled
+              value: "false"
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
@@ -74,13 +62,14 @@ spec:
               cpu: 100m
               memory: 256Mi
             limits:
-              memory: 512Mi
+              cpu: "1"
+              memory: 1Gi
           startupProbe:
             httpGet:
               path: /health/live
               port: http
             periodSeconds: 3
-            failureThreshold: 30
+            failureThreshold: 40
           readinessProbe:
             httpGet:
               path: /health/ready
@@ -98,4 +87,4 @@ spec:
       volumes:
         - name: db-secret
           secret:
-            secretName: player-db
+            secretName: db-credentials

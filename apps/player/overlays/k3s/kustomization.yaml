@@ -11,7 +11,7 @@ resources:
 patches:
   - path: demo-dev-mode.yaml
   
-# Déployer une nouvelle version = changer cette ligne (tag fixe main-<sha>, jamais "main").
+# The promotion workflow replaces this bootstrap tag with dev-<sha12>.
 images:
-  - name: diiageplayerimage/player-image
-    newTag: main-47e129f
+  - name: registry.lantern.diiage/lantern/player-backend
+    newTag: dev-latest

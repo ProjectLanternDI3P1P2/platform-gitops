@@ -1,0 +1,16 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: combat
+namePrefix: combat-
+
+resources:
+  - ../../../_bases/dotnet-postgres
+
+patches:
+  - path: settings.yaml
+
+images:
+  - name: registry.lantern.diiage/lantern/backend
+    newName: registry.lantern.diiage/lantern/combat-backend
+    newTag: dev-latest

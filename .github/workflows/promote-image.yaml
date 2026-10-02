@@ -1,0 +1,61 @@
+name: Promote immutable image
+
+on:
+  repository_dispatch:
+    types: [promote-image]
+
+concurrency:
+  group: gitops-image-promotions
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  promote:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout GitOps main
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: main
+
+      - name: Validate request and update Kustomize tag
+        env:
+          APPLICATION: ${{ github.event.client_payload.application }}
+          IMAGE: ${{ github.event.client_payload.image }}
+          TAG: ${{ github.event.client_payload.tag }}
+          SOURCE_REPOSITORY: ${{ github.event.client_payload.source_repository }}
+          SOURCE_REVISION: ${{ github.event.client_payload.source_revision }}
+        run: node .github/scripts/promote-image.mjs
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@776406bce94f63e41d621b960d78ee25c8b76ede # v4
+        with:
+          version: v1.31.0
+
+      - name: Render promoted application
+        env:
+          APPLICATION: ${{ github.event.client_payload.application }}
+        run: kubectl kustomize "apps/${APPLICATION}/overlays/k3s" >/dev/null
+
+      - name: Commit promotion
+        env:
+          APPLICATION: ${{ github.event.client_payload.application }}
+          TAG: ${{ github.event.client_payload.tag }}
+          SOURCE_REPOSITORY: ${{ github.event.client_payload.source_repository }}
+          SOURCE_REVISION: ${{ github.event.client_payload.source_revision }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
+          if git diff --quiet; then
+            echo "Tag already promoted; nothing to commit."
+            exit 0
+          fi
+          git config user.name "lantern-gitops-bot"
+          git config user.email "lantern-gitops-bot@users.noreply.github.com"
+          git add "apps/${APPLICATION}/overlays/k3s/kustomization.yaml"
+          git commit -m "deploy(${APPLICATION}): ${TAG}" \
+            -m "Source: ${SOURCE_REPOSITORY}@${SOURCE_REVISION}"
+          git push origin HEAD:main
