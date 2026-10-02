@@ -1,7 +1,7 @@
 # Application delivery through Harbor and Argo CD
 
 Application repositories call the reusable `publish-and-promote.yaml` workflow.
-A merge to `dev` builds an immutable `dev-<sha12>` image on the private ARC
+A merge to `main` builds an immutable `main-<sha12>` image on the private ARC
 runner, pushes it to Harbor, and sends a validated `promote-image` repository
 dispatch to this repository. The `promote-image.yaml` workflow changes only the
 matching Kustomize image tag on `main`. Argo CD then performs the deployment.
@@ -43,7 +43,7 @@ database password or place credentials in command arguments, files, or Git.
 1. Merge the reusable and promotion workflows in `platform-gitops`.
 2. Configure the three application-repository secrets.
 3. Bootstrap the cluster pull and database secrets.
-4. Merge each application CD branch into `dev` to publish its first image.
+4. Merge each application CD branch into `main` to publish its first image.
 5. Merge the GitOps application manifests.
 6. Apply `bootstrap/argocd/k3s` once to install the self-managed bootstrap
    application, then verify Argo CD sync and health. Later bootstrap changes are

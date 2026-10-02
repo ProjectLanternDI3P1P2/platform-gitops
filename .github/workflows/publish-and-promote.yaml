@@ -42,7 +42,7 @@ jobs:
           set -euo pipefail
           short_sha="$(git rev-parse --short=12 HEAD)"
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
-            tags="${IMAGE}:${GITHUB_REF_NAME}"$'\n'"${IMAGE}:main-latest"
+            tags="${IMAGE}:${GITHUB_REF_NAME}"
             deploy_tag=""
           else
             deploy_tag="main-${short_sha}"
@@ -87,7 +87,7 @@ jobs:
         run: |
           set -euo pipefail
           while IFS= read -r tag; do
-            docker buildx imagetools inspect "$tag" >/main/null
+            docker buildx imagetools inspect "$tag" >/dev/null
             echo "Verified ${tag}"
           done <<< "${TAGS}"
 
