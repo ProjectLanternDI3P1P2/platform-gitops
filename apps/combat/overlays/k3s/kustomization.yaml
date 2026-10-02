@@ -13,4 +13,4 @@ patches:
 images:
   - name: registry.lantern.diiage/lantern/backend
     newName: registry.lantern.diiage/lantern/combat-backend
-    newTag: dev-latest
+    newTag: dev-8a5a02494141
