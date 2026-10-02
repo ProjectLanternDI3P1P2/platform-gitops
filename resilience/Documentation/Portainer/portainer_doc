@@ -1,0 +1,437 @@
+# Installation et exploitation de Portainer CE sur K3s
+
+Date de mise en place : 2 octobre 2026.
+
+## 1. Objectif et résultat
+
+Portainer Community Edition a été installé dans le cluster K3s existant pour consulter et administrer ses nœuds, namespaces, applications et pods depuis une interface web unique.
+
+Le déploiement a réussi. Le pod était `1/1 Running`, le volume Longhorn était `Bound` et l'utilisateur a confirmé voir tous ses nœuds et ses applications dans Portainer.
+
+Cette documentation reprend la configuration utilisée et les résultats fournis pendant l'installation. Les noms de pods, adresses internes de services et placements présentés sont des observations à cet instant, pas des valeurs garanties après une recréation.
+
+## 2. Infrastructure existante
+
+Le cluster et Longhorn existaient déjà avant cette intervention. Ils n'ont pas été installés dans le cadre de cette procédure.
+
+| Nœud | Rôle affiché | Adresse interne | État observé |
+|---|---|---|---|
+| kube-master-01 | control-plane, etcd | 192.168.0.10 | Ready |
+| kube-master-02 | control-plane, etcd | 192.168.0.20 | Ready |
+| kube-master-03 | control-plane, etcd | 192.168.0.30 | Ready |
+| kube-worker-01 | worker | 192.168.0.11 | Ready |
+| kube-worker-02 | worker | 192.168.0.12 | Ready |
+| kube-worker-04 | worker | 192.168.0.14 | Ready |
+
+Version K3s rapportée sur les six nœuds : `v1.36.4+k3s1`. Système rapporté : Debian GNU/Linux 13 (trixie). Runtime rapporté : `containerd://2.3.4-k3s1.36`.
+
+Ces versions sont celles affichées dans les commandes transmises ; cette documentation ne constitue pas une validation de la matrice de support Portainer/Kubernetes.
+
+### Stockage existant
+
+| StorageClass | Provisioner | Par défaut | Reclaim policy | Binding mode | Expansion |
+|---|---|---|---|---|---|
+| longhorn | driver.longhorn.io | Oui | Delete | Immediate | true |
+| longhorn-static | driver.longhorn.io | Non | Delete | Immediate | true |
+
+Portainer utilise explicitement `longhorn`. Le nombre de répliques Longhorn du volume et sa politique de sauvegarde n'ont pas été vérifiés pendant cette installation.
+
+## 3. Architecture mise en place
+
+| Élément | Configuration |
+|---|---|
+| Namespace | portainer |
+| Image | portainer/portainer-ce:lts |
+| Deployment | portainer |
+| Nombre de pods souhaité | 1 |
+| Stratégie de remplacement | Recreate |
+| ServiceAccount | portainer |
+| ClusterRoleBinding | portainer, associé à cluster-admin |
+| PVC | portainer-data |
+| Taille demandée | 10 Gi |
+| StorageClass | longhorn |
+| Mode d'accès | ReadWriteOnce |
+| Répertoire persistant dans le conteneur | /data |
+| Service | portainer, type NodePort |
+| Port HTTPS du service et du conteneur | 9443/TCP |
+| Port d'accès sur les nœuds | 30779/TCP |
+
+Le compte de service permet à Portainer de communiquer avec l'API Kubernetes et d'administrer l'ensemble du cluster. Il n'est pas nécessaire de déployer Portainer ou un agent sur chaque worker pour cette connexion locale.
+
+Le pod a été placé sur `kube-worker-02`. Exécuter `kubectl apply` depuis `kube-master-01` ne force pas son installation sur ce master : Kubernetes choisit le nœud selon les contraintes et ressources disponibles. Aucun `nodeSelector` ni règle imposant les workers n'a été ajouté ; un futur placement peut donc être différent.
+
+Le service NodePort permet de joindre le pod via l'adresse d'un nœud accessible, même si ce nœud n'héberge pas Portainer. L'accès dépend également du routage et des règles de pare-feu.
+
+Une seule instance Portainer a été configurée. Le stockage persistant conserve ses données lors du remplacement du pod, mais cela ne rend pas l'interface hautement disponible sans interruption.
+
+## 4. Vérifications préalables
+
+Depuis un terminal ayant un accès administrateur au cluster :
+
+```bash
+kubectl get nodes
+kubectl get nodes -o wide
+kubectl get storageclass
+```
+
+Résultats constatés : six nœuds `Ready`, et StorageClass `longhorn` par défaut.
+
+Les commandes de déploiement ont ensuite été exécutées avec le compte `resi`, depuis `~/.kube` sur `kube-master-01`. Le fichier utilisé est donc `~/.kube/portainer.yml` sur cette machine.
+
+## 5. Manifeste complet utilisé
+
+Créer le fichier :
+
+```bash
+cd ~/.kube
+nano portainer.yml
+```
+
+Coller le manifeste suivant :
+
+```yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: portainer
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: portainer
+  namespace: portainer
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: portainer
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: portainer
+    namespace: portainer
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: portainer-data
+  namespace: portainer
+spec:
+  storageClassName: longhorn
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: portainer
+  namespace: portainer
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: portainer
+  template:
+    metadata:
+      labels:
+        app: portainer
+    spec:
+      serviceAccountName: portainer
+      containers:
+        - name: portainer
+          image: portainer/portainer-ce:lts
+          imagePullPolicy: Always
+          ports:
+            - name: https
+              containerPort: 9443
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          readinessProbe:
+            httpGet:
+              path: /
+              port: https
+              scheme: HTTPS
+            initialDelaySeconds: 10
+            periodSeconds: 10
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: portainer-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: portainer
+  namespace: portainer
+spec:
+  type: NodePort
+  selector:
+    app: portainer
+  ports:
+    - name: https
+      protocol: TCP
+      port: 9443
+      targetPort: https
+      nodePort: 30779
+```
+
+Dans nano : `Ctrl+O`, `Entrée`, puis `Ctrl+X`.
+
+### Rôle des ressources
+
+- **Namespace** : regroupe les ressources Portainer.
+- **ServiceAccount et ClusterRoleBinding** : donnent au pod les permissions d'administration du cluster.
+- **PVC** : demande un volume Longhorn de 10 Gi pour les données Portainer.
+- **Deployment** : maintient un pod Portainer et le remplace si nécessaire.
+- **Recreate** : arrête l'ancien pod avant son remplacement, avec une interruption temporaire de l'interface.
+- **Readiness probe** : vérifie la réponse HTTPS avant de considérer le pod prêt à recevoir le trafic.
+- **Service NodePort** : rend l'interface accessible sur le port 30779 des nœuds.
+
+Le manifeste expose uniquement HTTPS. Aucun Ingress, nom DNS, certificat personnalisé ou accès Edge n'a été configuré.
+
+## 6. Déploiement et validation
+
+```bash
+kubectl apply -f portainer.yml
+kubectl rollout status deployment/portainer -n portainer --timeout=180s
+kubectl get pods,pvc,svc -n portainer -o wide
+```
+
+Le rollout a retourné :
+
+```text
+deployment "portainer" successfully rolled out
+```
+
+### État observé après installation
+
+| Ressource | Résultat |
+|---|---|
+| Pod | portainer-7997495748-54tct |
+| État du pod | 1/1 Running, 0 redémarrage |
+| Nœud d'hébergement | kube-worker-02 |
+| IP du pod | 10.42.3.51 |
+| PVC | portainer-data, Bound, 10Gi, RWO, longhorn |
+| PV associé | pvc-86f27d3d-8797-4167-9b11-b80e2684e147 |
+| Service ClusterIP | 10.43.104.197 |
+| Exposition | NodePort, 9443:30779/TCP |
+
+Les commandes de maintenance utilisent le nom stable du Deployment plutôt que le nom temporaire du pod.
+
+### Avertissement rencontré sur le namespace
+
+Le premier `apply` a signalé l'absence de l'annotation `kubectl.kubernetes.io/last-applied-configuration` sur le namespace `portainer` déjà existant.
+
+La sortie précisait que l'annotation serait ajoutée automatiquement. Le namespace a été configuré et les autres ressources créées. Cet avertissement n'a pas empêché l'installation et n'a nécessité aucune suppression.
+
+## 7. Accès à l'interface
+
+Adresses possibles depuis un poste ayant accès au réseau des nœuds :
+
+- Master 01 : <https://192.168.0.10:30779/>
+- Worker hébergeant le pod lors de l'installation : <https://192.168.0.12:30779/>
+
+L'adresse visible dans la capture d'accès de l'utilisateur était :
+
+<https://10.4.111.200:30779/>
+
+Cette adresse a bien affiché la page Portainer, mais elle ne figure pas dans les IP internes des nœuds transmises. Son rôle exact (adresse intermédiaire, routage, traduction d'adresse ou autre) n'a pas été établi. Aucune configuration réseau supplémentaire n'a été réalisée pendant l'échange.
+
+### Certificat HTTPS
+
+Le certificat initial est autosigné, ce qui explique l'avertissement du navigateur. Lors de cette installation, l'accès a été poursuivi sur l'adresse identifiée du service.
+
+### Alternative : port-forward
+
+Si l'accès direct aux nœuds est indisponible, exécuter sur le poste qui possède le navigateur et un accès kubectl au cluster :
+
+```bash
+kubectl port-forward -n portainer svc/portainer 9443:9443
+```
+
+Laisser le terminal ouvert, puis consulter <https://localhost:9443/>.
+
+Si cette commande est lancée sur le master par SSH, `localhost` désigne le master ; elle n'ouvre pas automatiquement le port sur le poste du navigateur. Cette alternative a été proposée mais son utilisation n'a pas été confirmée.
+
+## 8. Initialisation et jeton
+
+Afficher les logs :
+
+```bash
+kubectl logs -n portainer deployment/portainer
+```
+
+Filtrer la ligne du jeton :
+
+```bash
+kubectl logs -n portainer deployment/portainer | grep 'setup_token='
+```
+
+Copier la valeur du jeton dans le champ prévu si demandé. Le jeton d'installation n'est pas un token Kubernetes et ne doit pas être ajouté au manifeste ni conservé dans cette documentation.
+
+Créer le compte administrateur et respecter les exigences de mot de passe affichées par l'interface, dont la longueur minimale indiquée de 12 caractères.
+
+Si la commande filtrée ne retourne rien, lire les logs complets pour vérifier le démarrage et l'état d'initialisation ; ne pas supprimer le volume pour tenter de recréer un jeton.
+
+## 9. Incident rencontré : expiration de l'initialisation
+
+La capture affichait la page `/timeout.html` indiquant que l'instance avait expiré par sécurité et devait être redémarrée. Le compte administrateur n'avait pas encore été créé dans le délai initial.
+
+Procédure donnée pour réouvrir l'initialisation :
+
+```bash
+kubectl rollout restart deployment/portainer -n portainer
+kubectl rollout status deployment/portainer -n portainer --timeout=180s
+kubectl logs -n portainer deployment/portainer
+```
+
+Ensuite, dans les cinq minutes :
+
+1. Revenir à l'adresse racine du service, sans `/timeout.html`.
+2. Récupérer le jeton depuis les nouveaux logs si demandé.
+3. Terminer immédiatement la création du compte administrateur.
+
+L'adresse utilisée dans la capture était `https://10.4.111.200:30779/`. Un simple rechargement de l'ancienne URL `/timeout.html` peut laisser le navigateur sur cette page ; il faut revenir à la racine.
+
+Ce redémarrage remplace le pod et conserve le PVC. Il ne nécessite pas de réinstaller Portainer.
+
+## 10. Écran Edge Compute et connexion locale
+
+Après l'initialisation, l'écran « Set up Edge Compute » a été affiché.
+
+Choix conseillé pour le besoin local : laisser « Enable Edge Compute features » désactivé et cliquer sur **Skip**. Cette fonctionnalité concerne notamment les environnements distants que Portainer ne peut pas joindre directement.
+
+Ouvrir ensuite l'environnement local, avec **Get Started** si ce bouton est proposé. Aucun agent supplémentaire par worker n'a été déployé.
+
+## 11. Consultation des ressources existantes
+
+Dans Portainer :
+
+1. Ouvrir **Home**, puis l'environnement **local**.
+2. Consulter la vue des nœuds, généralement **Cluster → Nodes**.
+3. Ouvrir **Applications**, puis choisir le namespace concerné ou tous les namespaces si ce filtre est disponible.
+4. Ouvrir une application pour consulter ses pods.
+5. Activer l'affichage des ressources système si l'option est disponible et nécessaire.
+
+Les intitulés peuvent varier selon la version effectivement déployée. L'utilisateur a confirmé que toutes ses ressources étaient visibles.
+
+Commandes de comparaison :
+
+```bash
+kubectl get nodes -o wide
+kubectl get namespaces
+kubectl get pods -A -o wide
+kubectl get deployments,statefulsets,daemonsets -A
+kubectl get services -A
+```
+
+Portainer consulte les ressources déjà présentes via l'API du cluster. Il n'effectue pas une migration des applications et ne nécessite pas leur redéploiement pour les afficher.
+
+### Métriques CPU et mémoire
+
+Vérification proposée :
+
+```bash
+kubectl top nodes
+kubectl top pods -A
+```
+
+Ces commandes dépendent de la disponibilité de l'API de métriques, généralement fournie par Metrics Server. Aucun résultat de ces commandes n'a été transmis : l'affichage des métriques n'est donc pas confirmé par cette installation.
+
+## 12. Commandes d'exploitation
+
+### État, placement et stockage
+
+```bash
+kubectl get pods,pvc,svc -n portainer -o wide
+kubectl get deployment portainer -n portainer
+```
+
+### Logs récents et suivi
+
+```bash
+kubectl logs -n portainer deployment/portainer --tail=100
+kubectl logs -n portainer deployment/portainer -f
+```
+
+Quitter le suivi avec `Ctrl+C`.
+
+### Redémarrage contrôlé
+
+```bash
+kubectl rollout restart deployment/portainer -n portainer
+kubectl rollout status deployment/portainer -n portainer --timeout=180s
+```
+
+L'interface est temporairement interrompue. Attention : le tag `lts` est mutable et `imagePullPolicy: Always` est configuré. Un remplacement du pod peut donc récupérer une version différente si ce tag a évolué depuis le déploiement initial.
+
+### Diagnostic général
+
+```bash
+kubectl describe deployment portainer -n portainer
+kubectl describe pods -n portainer -l app=portainer
+kubectl describe pvc portainer-data -n portainer
+kubectl get events -n portainer --sort-by=.metadata.creationTimestamp
+```
+
+| Symptôme | Vérifications |
+|---|---|
+| PVC Pending | Événements du PVC, état Longhorn, capacité et provisionnement |
+| Pod Pending ou ContainerCreating | Événements du pod, placement et attachement du volume |
+| ImagePullBackOff | Nom de l'image, disponibilité du registre et accès réseau des nœuds |
+| CrashLoopBackOff | Logs du conteneur, événements et erreurs de démarrage |
+| Interface inaccessible | Pod prêt, service, IP choisie, routage et accès TCP 30779 |
+| Page timeout.html | Redémarrer, revenir à la racine et terminer l'initialisation |
+| Ressources absentes dans l'interface | Environnement choisi, filtres de namespace et affichage système |
+
+## 13. Persistance et précautions d'exploitation
+
+Les données Portainer sont stockées dans `/data`, sur le PVC `portainer-data`. Elles sont distinctes des données des applications déjà déployées dans Kubernetes.
+
+Un volume persistant ne remplace pas une sauvegarde. Aucune procédure de sauvegarde ou de restauration n'a été mise en place ou testée pendant cette intervention.
+
+La StorageClass affiche une politique `Delete`. Ne pas supprimer le PVC ou le namespace dans le cadre d'un simple dépannage : cela peut entraîner la suppression du stockage associé. Ne pas exécuter `kubectl delete -f portainer.yml` pour redémarrer Portainer, car le fichier contient aussi le PVC et le namespace.
+
+Le compte utilisé par Portainer possède les droits `cluster-admin`. L'accès à l'interface doit être réservé aux administrateurs autorisés et au réseau d'administration ou au VPN. Aucune règle de pare-feu, restriction réseau ou authentification externe n'a été configurée dans cette procédure.
+
+## 14. État final et éléments non réalisés
+
+### Confirmé pendant l'installation
+
+- Cluster existant de six nœuds Ready.
+- Stockage Longhorn disponible et utilisé par le PVC Portainer.
+- Déploiement terminé avec succès et pod prêt sur kube-worker-02 au moment de la vérification.
+- Interface Portainer accessible.
+- Incident d'expiration initiale identifié et procédure de redémarrage fournie.
+- Accès final à Portainer et visibilité des ressources confirmés par l'utilisateur.
+
+### Non configuré ou non vérifié
+
+- Ingress, DNS dédié et certificat signé par une autorité de confiance.
+- Restriction du placement aux workers.
+- Version immuable de l'image : le manifeste utilise `lts`.
+- Sauvegarde et restauration Portainer/Longhorn.
+- Nombre de répliques Longhorn et tests de panne.
+- Métriques CPU/RAM.
+- Gestion de clusters supplémentaires et Edge Compute.
+- Durcissement réseau, SSO et comptes supplémentaires.
+
+## 15. Références
+
+Documentation officielle consultée pendant l'accompagnement ; ces pages peuvent évoluer :
+
+- [Installation Portainer CE sur Kubernetes](https://docs.portainer.io/start/install-ce/server/kubernetes/baremetal)
+- [Manifeste officiel Portainer CE LTS](https://downloads.portainer.io/ce-lts/portainer.yaml)
+- [Configuration initiale](https://docs.portainer.io/start/install-ce/server/setup)
+- [Jeton d'initialisation](https://docs.portainer.io/faqs/installing/setup-token)
+
+Le manifeste reproduit dans ce document est celui proposé et appliqué pendant l'échange, avec un stockage Longhorn explicite et un service limité à HTTPS ; ce n'est pas une copie intégrale du manifeste officiel.
