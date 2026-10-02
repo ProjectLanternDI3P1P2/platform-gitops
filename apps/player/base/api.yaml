@@ -51,7 +51,7 @@ spec:
       containers:
         - name: player-api
           # le tag est fixé dans overlays/k3s/kustomization.yaml
-          image: registry.lantern.diiage/lantern/player-backend
+          image: registry.lantern.diiage/lantern/player-backend:dev-bootstrap
           imagePullPolicy: Always
           ports:
             - name: http
