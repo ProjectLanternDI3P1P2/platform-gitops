@@ -1,0 +1,18 @@
+# Le player utilise la base PostgreSQL partagée (ADR-005) à la place de son ancienne base dédiée.
+# Le mot de passe est dans le Secret "lantern-db" du namespace player (créé à la main, jamais dans Git).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: player-api
+spec:
+  template:
+    spec:
+      containers:
+        - name: player-api
+          env:
+            - name: ConnectionStrings__DefaultConnection
+              value: Host=postgres-rw.database.svc.cluster.local;Port=5432;Database=lantern;Username=player;Search Path=player;Maximum Pool Size=10
+      volumes:
+        - name: db-secret
+          secret:
+            secretName: lantern-db
