@@ -1,0 +1,99 @@
+# Validation des tests Portainer — K3s
+
+**Date :** 2 octobre 2026  
+**Application :** `frontend-game`  
+**Namespace :** `frontend-game`  
+**Configuration initiale :** 2 répliques, application gérée par Argo CD.
+
+## Résultats
+
+| Test | Résultat |
+|---|---|
+| T01.9 — Arrêt d'une instance et remplacement automatique | **Validé** |
+| 06.7 — Observation de l'augmentation des répliques | **À finaliser** : retour automatique à 2 répliques |
+
+## T01.9 — Remplacement automatique d'un pod
+
+### Objectif
+
+Vérifier que Kubernetes remplace automatiquement un pod supprimé depuis Portainer pour maintenir le nombre de répliques souhaité.
+
+Dans ce test Kubernetes, l'instance arrêtée est un **pod**. Le Service réseau et le Deployment de l'application sont conservés.
+
+### Manipulation réalisée
+
+1. Ouvrir l'environnement local dans Portainer.
+2. Aller dans **Applications → frontend-game → Application pods**.
+3. Relever les deux pods en fonctionnement et prendre une capture « avant ».
+4. Supprimer uniquement le pod `frontend-game-5f485869f7-znsrx` avec l'icône de corbeille de ce pod.
+5. Actualiser la page et attendre le démarrage du remplaçant.
+6. Prendre une capture « après » montrant les deux pods en fonctionnement.
+
+### Observations
+
+| Élément | Avant suppression | Après remplacement |
+|---|---|---|
+| Pod concerné | `frontend-game-5f485869f7-znsrx` | `frontend-game-5f485869f7-cz79s` |
+| Nœud | `kube-worker-04` | `kube-worker-02` |
+| Adresse IP | `10.42.2.36` | `10.42.3.54` |
+| Création affichée dans Portainer | 02/10/2026 à 09:22:34 | 02/10/2026 à 10:51:45 |
+| État affiché | `Running`, conteneurs `1/1` | `Running`, conteneurs `1/1` |
+
+Le pod `frontend-game-5f485869f7-zh22p` est resté présent sur `kube-worker-01`, avec l'adresse `10.42.1.91`.
+
+### Critères de validation
+
+- [x] Le pod supprimé n'apparaît plus dans la capture finale.
+- [x] Un nouveau pod possède un nom et une date de création différents.
+- [x] Le nouveau pod est en état `Running`, avec `1/1` conteneur.
+- [x] Deux pods sont de nouveau en fonctionnement.
+
+**Conclusion : test validé.** Kubernetes, via le ReplicaSet du Deployment, a remplacé le pod supprimé afin de maintenir les deux répliques souhaitées. Le remplaçant a été placé sur un autre worker. Ces captures ne mesurent pas la durée du remplacement et ne prouvent pas à elles seules une absence d'interruption côté utilisateur.
+
+### Preuves à joindre au compte rendu
+
+- Capture avant : `image(20261002-085132).png`.
+- Capture après : `image(20261002-085230).png`.
+
+Les captures ont été examinées lors de la validation ; elles sont référencées ici par leur nom et ne sont pas intégrées dans ce fichier Markdown.
+
+## 06.7 — Augmentation du nombre de répliques
+
+### Manipulation effectuée
+
+```bash
+kubectl scale deployment frontend-game -n frontend-game --replicas=3
+kubectl get deployment frontend-game -n frontend-game
+kubectl get pods -n frontend-game -o wide
+```
+
+### Résultat observé
+
+La commande de mise à l'échelle a été acceptée. Les événements du Deployment ont montré successivement :
+
+```text
+Scaled up replica set frontend-game-5f485869f7 from 2 to 3
+Scaled down replica set frontend-game-5f485869f7 from 3 to 2
+```
+
+Le troisième pod a été supprimé et l'application est revenue à `2/2`.
+
+Le diagnostic a montré l'absence de HPA dans le namespace, une configuration appliquée avec `spec.replicas: 2` et le champ des répliques géré par `argocd-controller`. Argo CD a rétabli la configuration à deux répliques.
+
+**Conclusion : validation à finaliser.** Le changement temporaire a été constaté dans Kubernetes, mais un état final stable à `3/3` dans Portainer n'a pas été obtenu.
+
+### Étapes restantes
+
+1. Identifier le manifeste ou la valeur de configuration utilisés par l'application Argo CD.
+2. Passer le nombre souhaité de répliques à 3 dans cette source.
+3. Enregistrer la modification dans Git et synchroniser l'application via Argo CD.
+4. Vérifier que le Deployment atteint `3/3` et reste à cette valeur après synchronisation.
+5. Prendre une capture Portainer `Replicated 3 / 3` et la comparer à la capture initiale `2 / 2`.
+
+Commandes de vérification après synchronisation :
+
+```bash
+kubectl get deployment frontend-game -n frontend-game
+kubectl get pods -n frontend-game \
+  -l app.kubernetes.io/name=frontend-game -o wide
+```
