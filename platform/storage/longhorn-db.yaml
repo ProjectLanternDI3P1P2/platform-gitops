@@ -1,0 +1,22 @@
+# StorageClass pour les volumes PostgreSQL (ADR-005).
+# Chaque instance PostgreSQL a son propre volume avec UNE seule copie Longhorn :
+# la redondance est assurée par les 3 instances PostgreSQL (CloudNativePG), sur 3 workers.
+# Garder 3 copies Longhorn en plus donnerait 9 copies des données et des écritures amplifiées.
+#
+# Ressource de niveau cluster : à appliquer à la main, une seule fois.
+#   kubectl apply -f platform/storage/longhorn-db.yaml
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: longhorn-db
+provisioner: driver.longhorn.io
+allowVolumeExpansion: true
+# Retain : si un volume est supprimé par erreur, les données restent sur le disque.
+reclaimPolicy: Retain
+volumeBindingMode: Immediate
+parameters:
+  numberOfReplicas: "1"
+  # La copie suit le pod sur son worker (latence minimale) sans bloquer si ce n'est pas possible.
+  dataLocality: best-effort
+  staleReplicaTimeout: "30"
+  fsType: ext4

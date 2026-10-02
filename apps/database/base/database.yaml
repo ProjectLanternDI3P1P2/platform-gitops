@@ -1,0 +1,18 @@
+# La base "lantern" et un schéma par microservice (ADR-005).
+# Pour ajouter un service : ajouter ici son schéma, et son rôle dans roles.yaml.
+# Chaque rôle est propriétaire de son schéma ; les autres rôles n'y ont aucun droit.
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: lantern
+  annotations:
+    # Après le Cluster et les rôles (le propriétaire du schéma doit exister).
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  cluster:
+    name: postgres
+  name: lantern
+  owner: lantern
+  schemas:
+    - name: player
+      owner: player
