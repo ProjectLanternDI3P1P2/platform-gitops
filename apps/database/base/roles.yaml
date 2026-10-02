@@ -22,3 +22,67 @@ spec:
   databaseRoleReclaimPolicy: retain
   passwordSecret:
     name: postgres-role-player
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: DatabaseRole
+metadata:
+  name: combat
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  cluster:
+    name: postgres
+  name: combat
+  comment: Microservice Combat
+  login: true
+  databaseRoleReclaimPolicy: retain
+  passwordSecret:
+    name: postgres-role-combat
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: DatabaseRole
+metadata:
+  name: dungeon
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  cluster:
+    name: postgres
+  name: dungeon
+  comment: Microservice Dungeon
+  login: true
+  databaseRoleReclaimPolicy: retain
+  passwordSecret:
+    name: postgres-role-dungeon
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: DatabaseRole
+metadata:
+  name: reward
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  cluster:
+    name: postgres
+  name: reward
+  comment: Microservice Reward
+  login: true
+  databaseRoleReclaimPolicy: retain
+  passwordSecret:
+    name: postgres-role-reward
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: DatabaseRole
+metadata:
+  name: leaderboard
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  cluster:
+    name: postgres
+  name: leaderboard
+  comment: Microservice Leaderboard
+  login: true
+  databaseRoleReclaimPolicy: retain
+  passwordSecret:
+    name: postgres-role-leaderboard
