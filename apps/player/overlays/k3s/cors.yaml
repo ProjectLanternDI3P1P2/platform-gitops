@@ -1,0 +1,16 @@
+# CORS : origines autorisées à appeler l'API depuis un navigateur.
+# Depuis la v1.3.0, l'API refuse de démarrer si Cors:AllowedOrigins est vide ou invalide.
+# Une origine = schéma + nom d'hôte (+ port), sans chemin ni "/" final.
+# Cette variable remplace l'origine http://localhost:3000 de appsettings.Development.json.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: player-api
+spec:
+  template:
+    spec:
+      containers:
+        - name: player-api
+          env:
+            - name: Cors__AllowedOrigins__0
+              value: http://front.lantern.diiage
