@@ -12,6 +12,10 @@ spec:
               value: Host=dungeon-db;Port=5432;Database=dungeon;Username=dungeon
             - name: Grpc__Player__Address
               value: http://player-api.player.svc.cluster.local:8081
+            - name: Cors__AllowedOrigins__0
+              value: http://front.lantern.diiage
+            - name: Cors__AllowedOrigins__1
+              value: http://public.lantern.diiage
 ---
 apiVersion: apps/v1
 kind: StatefulSet

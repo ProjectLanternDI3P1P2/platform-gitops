@@ -41,7 +41,9 @@ spec:
               containerPort: 3000
           env:
             - name: NUXT_PUBLIC_API_GATEWAY_URL
-              value: http://player.lantern.diiage
+              value: http://api.lantern.diiage
+            - name: NUXT_PUBLIC_API_VERSION
+              value: v1
             - name: NUXT_PUBLIC_SITE_URL
               value: http://public.lantern.diiage
           securityContext:
