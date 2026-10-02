@@ -13,4 +13,4 @@ patches:
 images:
   - name: registry.lantern.diiage/lantern/backend
     newName: registry.lantern.diiage/lantern/leaderboard-backend
-    newTag: dev-8f3995e9da0a
+    newTag: dev-5392a2e59afa
