@@ -9,27 +9,6 @@ spec:
         - name: api
           env:
             - name: ConnectionStrings__DefaultConnection
-              value: Host=leaderboard-db;Port=5432;Database=leaderboard;Username=leaderboard
+              value: Host=postgres-rw.database.svc.cluster.local;Port=5432;Database=lantern;Username=leaderboard;Search Path=leaderboard;Maximum Pool Size=10
             - name: Grpc__Player__Address
               value: http://player-api.player.svc.cluster.local:8081
----
-apiVersion: apps/v1
-kind: StatefulSet
-metadata:
-  name: db
-spec:
-  template:
-    spec:
-      containers:
-        - name: postgres
-          env:
-            - name: POSTGRES_DB
-              value: leaderboard
-            - name: POSTGRES_USER
-              value: leaderboard
-          readinessProbe:
-            exec:
-              command: ["pg_isready", "-U", "leaderboard", "-d", "leaderboard"]
-          livenessProbe:
-            exec:
-              command: ["pg_isready", "-U", "leaderboard", "-d", "leaderboard"]

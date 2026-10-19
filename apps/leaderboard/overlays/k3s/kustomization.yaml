@@ -5,7 +5,7 @@ namespace: leaderboard
 namePrefix: leaderboard-
 
 resources:
-  - ../../../_bases/dotnet-postgres
+  - ../../../_bases/dotnet-api
 
 patches:
   - path: settings.yaml
