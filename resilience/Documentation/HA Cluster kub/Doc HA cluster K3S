@@ -447,7 +447,7 @@ Résultat validé : trois pods 1/1 Running sur master 01, worker 01 et worker 04
 | harbor / database-data-harbor-database-0 | 5 Gi | worker 04 |
 | harbor / data-harbor-redis-0 | 2 Gi | worker 02 |
 | harbor / data-harbor-trivy-0 | 5 Gi | worker 01 |
-| lantern-dev / postgresql-keycloak-pvc | 5 Gi | worker 02 |
+| historical identity namespace / postgresql-keycloak-pvc | 5 Gi | worker 02 |
 | player / data-player-db-0 | 5 Gi | worker 04 |
 
 Tous les volumes étaient attached et healthy, avec trois réplicas configurés. Pour chaque volume, les trois copies étaient running, une sur chacun des workers 01, 02 et 04, sans date failedAt affichée. Aucun volume inspecté n’était attaché à master 01 et aucune copie ne résidait sur ce master.

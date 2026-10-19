@@ -135,7 +135,7 @@
             <mxPoint x="210" y="350" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="nodes01" value="k8s-woker-01 | worker-02 |&amp;nbsp;worker-dev-01" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#2d2d2d;strokeColor=#C58AF9;fontSize=11;fontColor=#C58AF9;fontStyle=1;align=center;verticalAlign=bottom;spacingBottom=8;" parent="1" vertex="1">
+        <mxCell id="nodes01" value="k8s-woker-01 | worker-02 |&amp;nbsp;worker-01" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#2d2d2d;strokeColor=#C58AF9;fontSize=11;fontColor=#C58AF9;fontStyle=1;align=center;verticalAlign=bottom;spacingBottom=8;" parent="1" vertex="1">
           <mxGeometry x="70" y="240" width="270" height="90" as="geometry" />
         </mxCell>
         <mxCell id="title" value="Architecture Kube - Lantern Game :&amp;nbsp;" style="text;html=1;fontSize=20;fontStyle=1;fontColor=#FFFFFF;align=left;" parent="1" vertex="1">
@@ -191,7 +191,7 @@
         <mxCell id="leg3box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#2d2d2d;strokeColor=#C58AF9;" parent="1" vertex="1">
           <mxGeometry x="570" y="794.83" width="24" height="24" as="geometry" />
         </mxCell>
-        <mxCell id="leg3txt" value="Nodes (workers K8s, prod+dev)" style="text;html=1;fontSize=11;fontColor=#DDDDDD;align=left;verticalAlign=middle;" parent="1" vertex="1">
+        <mxCell id="leg3txt" value="Nodes (workers K8s, K3s)" style="text;html=1;fontSize=11;fontColor=#DDDDDD;align=left;verticalAlign=middle;" parent="1" vertex="1">
           <mxGeometry x="604" y="794.83" width="240" height="24" as="geometry" />
         </mxCell>
         <mxCell id="leg4box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#2d2d2d;strokeColor=#FFFF33;" parent="1" vertex="1">
@@ -578,7 +578,7 @@
             <mxPoint x="700" y="350" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="hoB71N6cLwXanl9p2o6C-413" value="k8s-woker-03 | worker-04 |&amp;nbsp;worker-dev-01" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#2d2d2d;strokeColor=#C58AF9;fontSize=11;fontColor=#C58AF9;fontStyle=1;align=center;verticalAlign=bottom;spacingBottom=8;" vertex="1" parent="1">
+        <mxCell id="hoB71N6cLwXanl9p2o6C-413" value="k8s-woker-03 | worker-04 |&amp;nbsp;worker-01" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#2d2d2d;strokeColor=#C58AF9;fontSize=11;fontColor=#C58AF9;fontStyle=1;align=center;verticalAlign=bottom;spacingBottom=8;" vertex="1" parent="1">
           <mxGeometry x="560" y="240" width="270" height="90" as="geometry" />
         </mxCell>
         <mxCell id="hoB71N6cLwXanl9p2o6C-414" value="" style="verticalLabelPosition=bottom;html=1;verticalAlign=top;align=center;strokeColor=none;fillColor=#00BEF2;shape=mxgraph.azure.worker_roles;" vertex="1" parent="1">
