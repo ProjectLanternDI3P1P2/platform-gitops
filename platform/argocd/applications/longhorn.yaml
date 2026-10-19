@@ -22,7 +22,7 @@ spec:
       releaseName: longhorn
       skipCrds: true
       valueFiles:
-      - $values/platform/storage/longhorn-values-observed.json
+      - $values/platform/longhorn/values.yaml
     repoURL: https://charts.longhorn.io
     targetRevision: 1.12.1
   - ref: values
