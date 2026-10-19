@@ -1,0 +1,22 @@
+alloy:
+  configMap:
+    content: "discovery.kubernetes \"pods\" {\n  role = \"pod\"\n}\n\ndiscovery.relabel
+      \"pod_logs\" {\n  targets = discovery.kubernetes.pods.targets\n  \n  rule {\n
+      \   target_label = \"job\"\n    replacement  = \"kubernetes-pods\"\n  }\n  rule
+      {\n    source_labels = [\"__meta_kubernetes_pod_uid\", \"__meta_kubernetes_pod_container_name\"]\n
+      \   separator = \"/\"\n    action = \"replace\"\n    replacement = \"/var/log/pods/*$1/*.log\"\n
+      \   target_label = \"__path__\"\n  }\n  rule {\n    source_labels = [\"__meta_kubernetes_namespace\"]\n
+      \   action = \"replace\"\n    target_label = \"namespace\"\n  }\n  rule {\n
+      \   source_labels = [\"__meta_kubernetes_pod_name\"]\n    action = \"replace\"\n
+      \   target_label = \"pod\"\n  }\n  rule {\n    source_labels = [\"__meta_kubernetes_pod_container_name\"]\n
+      \   action = \"replace\"\n    target_label = \"container\"\n  }\n}\n\nlocal.file_match
+      \"pod_logs\" {\n  path_targets = discovery.relabel.pod_logs.output\n}\n\nloki.source.file
+      \"pod_logs\" {\n  targets    = local.file_match.pod_logs.targets\n  forward_to
+      = [loki.write.loki_endpoint.receiver]\n}\n\nloki.write \"loki_endpoint\" {\n
+      \ endpoint {\n    url = \"http://192.168.0.15:3100/loki/api/v1/push\"\n  }\n}\n"
+    create: true
+  mounts:
+    varlog: true
+  securityContext:
+    runAsGroup: 0
+    runAsUser: 0

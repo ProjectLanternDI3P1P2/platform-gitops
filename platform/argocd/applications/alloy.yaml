@@ -22,7 +22,7 @@ spec:
       releaseName: alloy
       skipCrds: true
       valueFiles:
-      - $values/observability/alloy/values-observed.json
+      - $values/observability/alloy/values.yaml
     repoURL: https://grafana.github.io/helm-charts
     targetRevision: 1.13.0
   - ref: values
