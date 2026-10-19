@@ -1,0 +1,77 @@
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: traefik
+  namespace: kube-system
+spec:
+  failurePolicy: reinstall
+  valuesContent: |-
+    # Deployment requis pour l'autoscaling horizontal.
+    deployment:
+      kind: Deployment
+      replicas: null
+
+    # Traefik uniquement sur les workers.
+    nodeSelector:
+      node-role.kubernetes.io/worker: worker
+
+    # Ressources initiales à ajuster après les tests.
+    resources:
+      requests:
+        cpu: 200m
+        memory: 192Mi
+      limits:
+        memory: 512Mi
+
+    # T06.5 : autoscaling horizontal selon le CPU.
+    autoscaling:
+      enabled: true
+      minReplicas: 3
+      maxReplicas: 6
+      metrics:
+        - type: Resource
+          resource:
+            name: cpu
+            target:
+              type: Utilization
+              averageUtilization: 70
+
+      # Réduction progressive après la baisse de charge.
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 300
+          policies:
+            - type: Pods
+              value: 1
+              periodSeconds: 60
+
+    # Répartition entre les workers.
+    # Plusieurs pods restent autorisés sur un même worker.
+    topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: DoNotSchedule
+        labelSelector:
+          matchLabels:
+            app.kubernetes.io/name: traefik
+
+    # Stratégie pour les futures mises à jour du Deployment.
+    # Ne garantit pas une migration sans interruption
+    # depuis le DaemonSet.
+    updateStrategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxUnavailable: 0
+        maxSurge: 1
+
+    service:
+      spec:
+        externalTrafficPolicy: Local
+
+    ports:
+      web:
+        forwardedHeaders:
+          trustedIPs:
+            - 192.168.0.1/32
+            - 192.168.0.2/32
+            - 192.168.0.254/32

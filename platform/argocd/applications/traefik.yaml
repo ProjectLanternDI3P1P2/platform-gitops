@@ -1,28 +1,19 @@
-{
-  "apiVersion": "argoproj.io/v1alpha1",
-  "metadata": {
-    "name": "traefik",
-    "labels": {
-      "app.kubernetes.io/part-of": "lantern-platform"
-    },
-    "namespace": "argocd"
-  },
-  "spec": {
-    "source": {
-      "targetRevision": "main",
-      "repoURL": "https://github.com/ProjectLanternDI3P1P2/platform-gitops.git",
-      "path": "platform/traefik/k3s"
-    },
-    "project": "lantern-platform-k3s",
-    "destination": {
-      "server": "https://kubernetes.default.svc",
-      "namespace": "kube-system"
-    },
-    "syncPolicy": {
-      "syncOptions": [
-        "CreateNamespace=false"
-      ]
-    }
-  },
-  "kind": "Application"
-}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  labels:
+    app.kubernetes.io/part-of: lantern-platform
+  name: traefik
+  namespace: argocd
+spec:
+  destination:
+    namespace: kube-system
+    server: https://kubernetes.default.svc
+  project: lantern-platform-k3s
+  source:
+    path: platform/traefik/k3s
+    repoURL: https://github.com/ProjectLanternDI3P1P2/platform-gitops.git
+    targetRevision: main
+  syncPolicy:
+    syncOptions:
+    - CreateNamespace=false

@@ -1,54 +1,35 @@
-{
-  "apiVersion": "argoproj.io/v1alpha1",
-  "metadata": {
-    "name": "arc-controller",
-    "labels": {
-      "app.kubernetes.io/part-of": "lantern-platform"
-    },
-    "namespace": "argocd"
-  },
-  "spec": {
-    "syncPolicy": {
-      "syncOptions": [
-        "CreateNamespace=false",
-        "RespectIgnoreDifferences=true",
-        "FailOnSharedResource=true"
-      ]
-    },
-    "project": "lantern-platform-k3s",
-    "sources": [
-      {
-        "chart": "gha-runner-scale-set-controller",
-        "repoURL": "ghcr.io/actions/actions-runner-controller-charts",
-        "helm": {
-          "skipCrds": true,
-          "valueFiles": [
-            "$values/platform/actions-runner-controller/values-controller-observed.json"
-          ],
-          "releaseName": "arc"
-        },
-        "targetRevision": "0.14.2"
-      },
-      {
-        "targetRevision": "main",
-        "ref": "values",
-        "repoURL": "https://github.com/ProjectLanternDI3P1P2/platform-gitops.git"
-      }
-    ],
-    "destination": {
-      "server": "https://kubernetes.default.svc",
-      "namespace": "arc-systems"
-    },
-    "ignoreDifferences": [
-      {
-        "group": "",
-        "jsonPointers": [
-          "/data",
-          "/stringData"
-        ],
-        "kind": "Secret"
-      }
-    ]
-  },
-  "kind": "Application"
-}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  labels:
+    app.kubernetes.io/part-of: lantern-platform
+  name: arc-controller
+  namespace: argocd
+spec:
+  destination:
+    namespace: arc-systems
+    server: https://kubernetes.default.svc
+  ignoreDifferences:
+  - group: ""
+    jsonPointers:
+    - /data
+    - /stringData
+    kind: Secret
+  project: lantern-platform-k3s
+  sources:
+  - chart: gha-runner-scale-set-controller
+    helm:
+      releaseName: arc
+      skipCrds: true
+      valueFiles:
+      - $values/platform/actions-runner-controller/values-controller-observed.json
+    repoURL: ghcr.io/actions/actions-runner-controller-charts
+    targetRevision: 0.14.2
+  - ref: values
+    repoURL: https://github.com/ProjectLanternDI3P1P2/platform-gitops.git
+    targetRevision: main
+  syncPolicy:
+    syncOptions:
+    - CreateNamespace=false
+    - RespectIgnoreDifferences=true
+    - FailOnSharedResource=true

@@ -1,54 +1,35 @@
-{
-  "apiVersion": "argoproj.io/v1alpha1",
-  "metadata": {
-    "name": "longhorn",
-    "labels": {
-      "app.kubernetes.io/part-of": "lantern-platform"
-    },
-    "namespace": "argocd"
-  },
-  "spec": {
-    "syncPolicy": {
-      "syncOptions": [
-        "CreateNamespace=false",
-        "RespectIgnoreDifferences=true",
-        "FailOnSharedResource=true"
-      ]
-    },
-    "project": "lantern-platform-k3s",
-    "sources": [
-      {
-        "chart": "longhorn",
-        "repoURL": "https://charts.longhorn.io",
-        "helm": {
-          "skipCrds": true,
-          "valueFiles": [
-            "$values/platform/storage/longhorn-values-observed.json"
-          ],
-          "releaseName": "longhorn"
-        },
-        "targetRevision": "1.12.1"
-      },
-      {
-        "targetRevision": "main",
-        "ref": "values",
-        "repoURL": "https://github.com/ProjectLanternDI3P1P2/platform-gitops.git"
-      }
-    ],
-    "destination": {
-      "server": "https://kubernetes.default.svc",
-      "namespace": "longhorn-system"
-    },
-    "ignoreDifferences": [
-      {
-        "group": "",
-        "jsonPointers": [
-          "/data",
-          "/stringData"
-        ],
-        "kind": "Secret"
-      }
-    ]
-  },
-  "kind": "Application"
-}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  labels:
+    app.kubernetes.io/part-of: lantern-platform
+  name: longhorn
+  namespace: argocd
+spec:
+  destination:
+    namespace: longhorn-system
+    server: https://kubernetes.default.svc
+  ignoreDifferences:
+  - group: ""
+    jsonPointers:
+    - /data
+    - /stringData
+    kind: Secret
+  project: lantern-platform-k3s
+  sources:
+  - chart: longhorn
+    helm:
+      releaseName: longhorn
+      skipCrds: true
+      valueFiles:
+      - $values/platform/storage/longhorn-values-observed.json
+    repoURL: https://charts.longhorn.io
+    targetRevision: 1.12.1
+  - ref: values
+    repoURL: https://github.com/ProjectLanternDI3P1P2/platform-gitops.git
+    targetRevision: main
+  syncPolicy:
+    syncOptions:
+    - CreateNamespace=false
+    - RespectIgnoreDifferences=true
+    - FailOnSharedResource=true
