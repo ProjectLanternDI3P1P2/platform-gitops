@@ -22,7 +22,7 @@ spec:
       releaseName: arc
       skipCrds: true
       valueFiles:
-      - $values/platform/actions-runner-controller/values-controller-observed.json
+      - $values/platform/actions-runner-controller/controller/values.yaml
     repoURL: ghcr.io/actions/actions-runner-controller-charts
     targetRevision: 0.14.2
   - ref: values

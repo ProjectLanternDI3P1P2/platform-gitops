@@ -1,0 +1,175 @@
+controllerServiceAccount:
+  name: arc-gha-rs-controller
+  namespace: arc-systems
+githubConfigSecret: arc-github-app
+githubConfigUrl: https://github.com/ProjectLanternDI3P1P2
+listenerTemplate:
+  spec:
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+          - matchExpressions:
+            - key: node-role.kubernetes.io/control-plane
+              operator: DoesNotExist
+    containers:
+    - name: listener
+      resources:
+        limits:
+          cpu: 250m
+          memory: 256Mi
+        requests:
+          cpu: 50m
+          memory: 128Mi
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        runAsNonRoot: true
+    securityContext:
+      runAsNonRoot: true
+      seccompProfile:
+        type: RuntimeDefault
+maxRunners: 2
+minRunners: 0
+runnerScaleSetName: lantern-k3s-builders
+template:
+  spec:
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+          - matchExpressions:
+            - key: node-role.kubernetes.io/control-plane
+              operator: DoesNotExist
+    automountServiceAccountToken: false
+    containers:
+    - command:
+      - /home/runner/run.sh
+      env:
+      - name: DOCKER_HOST
+        value: unix:///var/run/docker.sock
+      - name: RUNNER_WAIT_FOR_DOCKER_IN_SECONDS
+        value: "120"
+      - name: SSL_CERT_FILE
+        value: /etc/ssl/certs/ca-certificates.crt
+      image: ghcr.io/actions/actions-runner:2.337.0
+      name: runner
+      resources:
+        limits:
+          cpu: "2"
+          memory: 2Gi
+        requests:
+          cpu: 250m
+          memory: 512Mi
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        runAsNonRoot: true
+        runAsUser: 1001
+      volumeMounts:
+      - mountPath: /home/runner/_work
+        name: work
+      - mountPath: /var/run
+        name: dind-sock
+      - mountPath: /etc/ssl/certs/ca-certificates.crt
+        name: ca-bundle
+        readOnly: true
+        subPath: ca-certificates.crt
+    hostAliases:
+    - hostnames:
+      - registry.lantern.diiage
+      ip: 10.43.236.141
+    initContainers:
+    - command:
+      - /bin/sh
+      - -ec
+      - |
+        cp /etc/ssl/certs/ca-certificates.crt /ca-bundle/ca-certificates.crt
+        cat /harbor-ca/ca.crt >> /ca-bundle/ca-certificates.crt
+      image: ghcr.io/actions/actions-runner:2.337.0
+      name: prepare-ca-bundle
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        runAsNonRoot: true
+        runAsUser: 1001
+      volumeMounts:
+      - mountPath: /harbor-ca
+        name: harbor-ca
+        readOnly: true
+      - mountPath: /ca-bundle
+        name: ca-bundle
+    - command:
+      - cp
+      - -r
+      - /home/runner/externals/.
+      - /home/runner/tmpDir/
+      image: ghcr.io/actions/actions-runner:2.337.0
+      name: init-dind-externals
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        runAsNonRoot: true
+        runAsUser: 1001
+      volumeMounts:
+      - mountPath: /home/runner/tmpDir
+        name: dind-externals
+    - args:
+      - dockerd
+      - --host=unix:///var/run/docker.sock
+      - --group=$(DOCKER_GROUP_GID)
+      env:
+      - name: DOCKER_GROUP_GID
+        value: "123"
+      image: docker:28.5.1-dind
+      name: dind
+      resources:
+        limits:
+          cpu: "2"
+          memory: 4Gi
+        requests:
+          cpu: 500m
+          memory: 1Gi
+      restartPolicy: Always
+      securityContext:
+        privileged: true
+      startupProbe:
+        exec:
+          command:
+          - docker
+          - info
+        failureThreshold: 24
+        periodSeconds: 5
+      volumeMounts:
+      - mountPath: /home/runner/_work
+        name: work
+      - mountPath: /var/run
+        name: dind-sock
+      - mountPath: /home/runner/externals
+        name: dind-externals
+      - mountPath: /etc/docker/certs.d/registry.lantern.diiage/ca.crt
+        name: harbor-ca
+        readOnly: true
+        subPath: ca.crt
+    restartPolicy: Never
+    volumes:
+    - emptyDir:
+        sizeLimit: 20Gi
+      name: work
+    - emptyDir: {}
+      name: dind-sock
+    - emptyDir: {}
+      name: dind-externals
+    - configMap:
+        name: harbor-ca
+      name: harbor-ca
+    - emptyDir: {}
+      name: ca-bundle
