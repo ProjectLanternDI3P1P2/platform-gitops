@@ -4,6 +4,7 @@ kind: Kustomization
 resources:
   - argocd.yaml
   - platform.yaml
+  - keycloak.yaml
   - player.yaml
   - dungeon.yaml
   - combat.yaml
