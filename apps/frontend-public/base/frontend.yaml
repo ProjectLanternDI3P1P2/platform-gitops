@@ -35,7 +35,8 @@ spec:
           type: RuntimeDefault
       containers:
         - name: frontend-public
-          image: registry.lantern.diiage/lantern/frontend-public:dev-bootst
+          image: registry.lantern.diiage/lantern/frontend-public:dev-bootsrap
+          imagePullPolicy: Always
           ports:
             - name: http
               containerPort: 3000
