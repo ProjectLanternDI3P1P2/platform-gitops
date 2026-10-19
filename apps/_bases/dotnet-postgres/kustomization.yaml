@@ -3,3 +3,4 @@ kind: Kustomization
 
 resources:
   - api.yaml
+  - postgres.yaml
