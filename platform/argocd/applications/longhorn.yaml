@@ -1,0 +1,54 @@
+{
+  "apiVersion": "argoproj.io/v1alpha1",
+  "metadata": {
+    "name": "longhorn",
+    "labels": {
+      "app.kubernetes.io/part-of": "lantern-platform"
+    },
+    "namespace": "argocd"
+  },
+  "spec": {
+    "syncPolicy": {
+      "syncOptions": [
+        "CreateNamespace=false",
+        "RespectIgnoreDifferences=true",
+        "FailOnSharedResource=true"
+      ]
+    },
+    "project": "lantern-platform-k3s",
+    "sources": [
+      {
+        "chart": "longhorn",
+        "repoURL": "https://charts.longhorn.io",
+        "helm": {
+          "skipCrds": true,
+          "valueFiles": [
+            "$values/platform/storage/longhorn-values-observed.json"
+          ],
+          "releaseName": "longhorn"
+        },
+        "targetRevision": "1.12.1"
+      },
+      {
+        "targetRevision": "main",
+        "ref": "values",
+        "repoURL": "https://github.com/ProjectLanternDI3P1P2/platform-gitops.git"
+      }
+    ],
+    "destination": {
+      "server": "https://kubernetes.default.svc",
+      "namespace": "longhorn-system"
+    },
+    "ignoreDifferences": [
+      {
+        "group": "",
+        "jsonPointers": [
+          "/data",
+          "/stringData"
+        ],
+        "kind": "Secret"
+      }
+    ]
+  },
+  "kind": "Application"
+}
