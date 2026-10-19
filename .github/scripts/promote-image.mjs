@@ -41,7 +41,7 @@ const expected = applications[application];
 if (!expected) throw new Error(`Unsupported application: ${application}`);
 if (image !== expected.image) throw new Error(`Unexpected image for ${application}`);
 if (sourceRepository !== expected.repository) throw new Error(`Unexpected source repository for ${application}`);
-if (!/^dev-[0-9a-f]{12}$/.test(tag)) throw new Error(`Invalid immutable tag: ${tag}`);
+if (!/^v\d+\.\d+\.\d+$/.test(tag)) throw new Error(`Invalid immutable tag: ${tag}`);
 if (!/^[0-9a-f]{40}$/.test(sourceRevision)) throw new Error("Invalid source revision");
 
 const path = `apps/${application}/overlays/k3s/kustomization.yaml`;

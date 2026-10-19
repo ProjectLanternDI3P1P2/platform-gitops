@@ -14,3 +14,5 @@ spec:
           env:
             - name: Cors__AllowedOrigins__0
               value: http://front.lantern.diiage
+            - name: Cors__AllowedOrigins__1
+              value: http://public.lantern.diiage

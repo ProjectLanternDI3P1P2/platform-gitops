@@ -1,18 +1,30 @@
-# Ingress de DÉMO : expose toute l'API REST (port 8080) sur le réseau interne.
-# Le gRPC (8081) n'est pas exposé. Aucune authentification sur ces routes :
-# cible d'architecture (ADR-GLOB-003) = seule la Gateway (Traefik + Keycloak) est publique,
-# cette route sera retirée.
+# Traefik is the single public API entry point. Only Player-owned routes are
+# exposed here; gRPC port 8081 remains internal to the cluster.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: player-api-health
+  name: api-gateway-player
 spec:
   ingressClassName: traefik
   rules:
-    - host: player.lantern.diiage
+    - host: api.lantern.diiage
       http:
         paths:
-          - path: /
+          - path: /api/v1/players
+            pathType: Prefix
+            backend:
+              service:
+                name: player-api
+                port:
+                  name: http
+          - path: /api/v1/hero-classes
+            pathType: Prefix
+            backend:
+              service:
+                name: player-api
+                port:
+                  name: http
+          - path: /hubs/player
             pathType: Prefix
             backend:
               service:

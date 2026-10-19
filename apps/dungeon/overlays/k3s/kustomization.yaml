@@ -6,6 +6,8 @@ namePrefix: dungeon-
 
 resources:
   - ../../../_bases/dotnet-postgres
+  - ingress.yaml
+  - diagnostics-ingress.yaml
 
 patches:
   - path: settings.yaml

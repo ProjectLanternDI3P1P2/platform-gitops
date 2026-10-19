@@ -10,7 +10,7 @@ resources:
 patches:
   - path: env.yaml
 
-# The promotion workflow replaces this bootstrap tag with dev-<sha12>.
+# The promotion workflow replaces this bootstrap tag with main-<sha12>.
 images:
   - name: registry.lantern.diiage/lantern/frontend-game
     newTag: dev-latest
