@@ -5,73 +5,90 @@ metadata:
   namespace: kube-system
 spec:
   failurePolicy: reinstall
-  valuesContent: |-
-    # Deployment requis pour l'autoscaling horizontal.
+  valuesContent: |
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: traefik
+          topologyKey: kubernetes.io/hostname
+    autoscaling:
+      behavior:
+        scaleDown:
+          policies:
+          - periodSeconds: 60
+            type: Pods
+            value: 1
+          stabilizationWindowSeconds: 300
+      enabled: true
+      maxReplicas: 6
+      metrics:
+      - resource:
+          name: cpu
+          target:
+            averageUtilization: 70
+            type: Utilization
+        type: Resource
+      minReplicas: 3
     deployment:
       kind: Deployment
       replicas: null
-
-    # Traefik uniquement sur les workers.
+    ingressClass:
+      enabled: true
+      isDefaultClass: true
+    logs:
+      access:
+        enabled: true
+      general:
+        level: INFO
     nodeSelector:
       node-role.kubernetes.io/worker: worker
-
-    # Ressources initiales à ajuster après les tests.
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
+    ports:
+      web:
+        expose:
+          default: true
+        exposedPort: 80
+        forwardedHeaders:
+          trustedIPs:
+          - 192.168.0.1/32
+          - 192.168.0.2/32
+          - 192.168.0.254/32
+        port: 8000
+      websecure:
+        expose:
+          default: true
+        exposedPort: 443
+        port: 8443
+    providers:
+      kubernetesIngress:
+        enabled: true
+        ingressClass: traefik
+        publishedService:
+          enabled: true
     resources:
+      limits:
+        cpu: "1"
+        memory: 1Gi
       requests:
         cpu: 200m
-        memory: 192Mi
-      limits:
-        memory: 512Mi
-
-    # T06.5 : autoscaling horizontal selon le CPU.
-    autoscaling:
-      enabled: true
-      minReplicas: 3
-      maxReplicas: 6
-      metrics:
-        - type: Resource
-          resource:
-            name: cpu
-            target:
-              type: Utilization
-              averageUtilization: 70
-
-      # Réduction progressive après la baisse de charge.
-      behavior:
-        scaleDown:
-          stabilizationWindowSeconds: 300
-          policies:
-            - type: Pods
-              value: 1
-              periodSeconds: 60
-
-    # Répartition entre les workers.
-    # Plusieurs pods restent autorisés sur un même worker.
-    topologySpreadConstraints:
-      - maxSkew: 1
-        topologyKey: kubernetes.io/hostname
-        whenUnsatisfiable: DoNotSchedule
-        labelSelector:
-          matchLabels:
-            app.kubernetes.io/name: traefik
-
-    # Stratégie pour les futures mises à jour du Deployment.
-    # Ne garantit pas une migration sans interruption
-    # depuis le DaemonSet.
-    updateStrategy:
-      type: RollingUpdate
-      rollingUpdate:
-        maxUnavailable: 0
-        maxSurge: 1
-
+        memory: 256Mi
     service:
       spec:
         externalTrafficPolicy: Local
-
-    ports:
-      web:
-        forwardedHeaders:
-          trustedIPs:
-            - 192.168.0.1/32
-            - 192.168.0.2/32
-            - 192.168.0.254/32
+      type: LoadBalancer
+    topologySpreadConstraints:
+    - labelSelector:
+        matchLabels:
+          app.kubernetes.io/name: traefik
+      maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: DoNotSchedule
+    updateStrategy:
+      rollingUpdate:
+        maxSurge: 1
+        maxUnavailable: 0
+      type: RollingUpdate
