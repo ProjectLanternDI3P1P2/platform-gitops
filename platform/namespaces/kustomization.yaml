@@ -3,8 +3,8 @@ kind: Kustomization
 
 resources:
   - argocd.yaml
-  - ciso-assistant.yaml
   - platform.yaml
+  - keycloak.yaml
   - player.yaml
   - dungeon.yaml
   - combat.yaml

@@ -1,0 +1,18 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: platform
+  namespace: argocd
+spec:
+  project: lantern-platform-k3s
+  source:
+    repoURL: https://github.com/ProjectLanternDI3P1P2/platform-gitops.git
+    targetRevision: main
+    path: platform
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  # Manual adoption; child workloads and storage are never pruned automatically.
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=false

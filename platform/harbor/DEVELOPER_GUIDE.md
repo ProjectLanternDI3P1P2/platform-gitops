@@ -7,7 +7,7 @@ images:
 https://registry.lantern.diiage
 ```
 
-Harbor is currently intended for trusted development networks, CI runners and
+Harbor is currently intended for trusted private networks, CI runners and
 K3s nodes. It is not a public Internet registry.
 
 ## Prerequisites

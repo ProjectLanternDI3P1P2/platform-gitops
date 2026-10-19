@@ -8,8 +8,6 @@ resources:
   - ingress.yaml
 
 patches:
-  # Mode démo temporaire (voir demo-dev-mode.yaml).
-  - path: demo-dev-mode.yaml
   # Origines CORS autorisées (le front).
   - path: cors.yaml
   # Temporaire : image sur Docker Hub (voir dockerhub-image.yaml).

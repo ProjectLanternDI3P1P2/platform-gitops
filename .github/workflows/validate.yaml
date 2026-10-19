@@ -35,43 +35,16 @@ jobs:
             kubectl kustomize "$(dirname "$file")" >/dev/null
           done < <(find . -type f \( -name kustomization.yaml -o -name kustomization.yml \) -not -path './.git/*')
 
-      - name: Validate local Helm charts
-        shell: bash
-        run: |
-          set -euo pipefail
-          local_chart_specs=(
-            "keycloak|charts/keycloak|"
-            "keycloak|charts/keycloak|charts/keycloak/values-prod.yaml"
-            "mailpit|charts/mailpit|"
-            "mailpit|charts/mailpit|charts/mailpit/values-prod.yaml"
-          )
-          for spec in "${local_chart_specs[@]}"; do
-            IFS='|' read -r release chart values_file <<< "$spec"
-            lint_args=(lint "$chart")
-            template_args=(template "$release" "$chart" --namespace platform)
-            if [[ -n "$values_file" ]]; then
-              lint_args+=(-f "$values_file")
-              template_args+=(-f "$values_file")
-            fi
-            helm "${lint_args[@]}"
-            helm "${template_args[@]}" >/dev/null
-          done
-
       - name: Validate pinned third-party charts
         shell: bash
         run: |
           set -euo pipefail
           helm repo add traefik https://traefik.github.io/charts
           helm template traefik traefik/traefik --version 41.6.0 --namespace traefik \
-            -f platform/traefik/values-dev.yaml >/dev/null
-          helm template traefik traefik/traefik --version 41.6.0 --namespace traefik \
-            -f platform/traefik/values-prod.yaml >/dev/null
+            -f platform/traefik/values.yaml >/dev/null
           helm repo add argo https://argoproj.github.io/argo-helm
           helm template argocd argo/argo-cd --version 10.9.2 --namespace argocd \
-            -f platform/argocd/values-dev.yaml \
-            --set-string 'configs.secret.extra.oidc\.keycloak\.clientSecret=ci-placeholder' >/dev/null
-          helm template argocd argo/argo-cd --version 10.9.2 --namespace argocd \
-            -f platform/argocd/values-prod.yaml \
+            -f platform/argocd/values.yaml \
             --set-string 'configs.secret.extra.oidc\.keycloak\.clientSecret=ci-placeholder' >/dev/null
           helm template argocd argo/argo-cd --version 10.9.2 --namespace argocd \
             -f platform/argocd/values-k3s.yaml >/dev/null
@@ -84,9 +57,3 @@ jobs:
             -f platform/harbor/values-k3s.yaml \
             --set-string database.internal.password=ci-placeholder \
             --set-string registry.credentials.password=ci-placeholder >/dev/null
-          helm template ciso-assistant oci://ghcr.io/intuitem/helm-charts/ce/ciso-assistant \
-            --version 0.11.5 --namespace ciso-assistant \
-            -f platform/ciso-assistant/values-dev.yaml >/dev/null
-          helm template ciso-assistant oci://ghcr.io/intuitem/helm-charts/ce/ciso-assistant \
-            --version 0.11.5 --namespace ciso-assistant \
-            -f platform/ciso-assistant/values-prod.yaml >/dev/null

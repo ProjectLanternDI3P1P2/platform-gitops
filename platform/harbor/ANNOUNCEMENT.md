@@ -6,7 +6,7 @@ Harbor is now available on the Lantern Kubernetes platform at:
 
 The registry provides private OCI image storage, immutable image references and
 Trivy vulnerability scanning. It is backed by replicated Longhorn volumes and
-is currently restricted to trusted development, CI and cluster networks.
+is currently restricted to trusted private, CI and cluster networks.
 
 Before using it, developers must obtain:
 

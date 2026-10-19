@@ -1,7 +1,7 @@
 # Harbor exposure through pfSense
 
 This runbook prepares Harbor exposure through pfSense without applying any
-firewall change automatically. Apply it only to trusted development or VPN
+firewall change automatically. Apply it only to trusted private or VPN
 networks unless a separate Internet-facing security review has been completed.
 
 ## Current Kubernetes endpoint
@@ -29,7 +29,7 @@ In **Firewall > NAT > Port Forward**, select **Add** and use:
 
 | Field | Value |
 | --- | --- |
-| Interface | The trusted development or VPN ingress interface |
+| Interface | The trusted private or VPN ingress interface |
 | Address family | IPv4 |
 | Protocol | TCP |
 | Source | Approved developer/CI network alias |

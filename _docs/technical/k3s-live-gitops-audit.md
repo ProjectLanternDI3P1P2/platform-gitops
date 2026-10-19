@@ -2,6 +2,10 @@
 
 Audit date: 2026-10-01
 
+Historical snapshot. For the identity service reset and its current target layout,
+see [Keycloak](keycloak.md). The database preservation instructions below
+refer to the pre-reset installation.
+
 This document records the initial read-only comparison between the deployed
 K3s cluster and the `main` branch of `platform-gitops`. It contains no Secret
 data or kubeconfig material.
@@ -40,7 +44,7 @@ data or kubeconfig material.
 | Argo CD | Helm CLI | K3s values were absent | Live non-secret values are now recorded |
 | Longhorn | Helm CLI | Absent | Back up and compare a pinned render before GitOps adoption |
 | Traefik | K3s Helm controller | Production values exist but do not own the live release | Keep the K3s Helm controller authoritative until a planned migration |
-| Keycloak and PostgreSQL in `lantern-dev` | Manual resources | Different from the repository production chart | Back up PostgreSQL and compare manifests before adoption |
+| Keycloak and PostgreSQL in the historical identity namespace | Manual resources | Different from the repository production chart | Back up PostgreSQL and compare manifests before adoption |
 | Docusaurus in `default` | Manual resources | Absent; mutable `latest` image | Identify its source repository and pin an immutable image |
 | Platform namespaces | Mixed/manual | Declared but not reconciled as one foundation | Review and manually sync `cluster-foundation` |
 
@@ -50,7 +54,7 @@ data or kubeconfig material.
    logs and sending them to `http://192.168.0.15:3100`.
 2. Several platform components are Helm or manually managed and therefore have
    no continuous reconciliation from Git.
-3. The live Keycloak deployment is in `lantern-dev`, while the repository also
+3. The live Keycloak deployment is in the historical identity namespace, while the repository also
    contains a separate platform chart and production profile. The live database
    is a Deployment named `postgresql-keycloak` with an existing 5 GiB Longhorn
    PVC, while the chart would create a differently named StatefulSet and PVC.
