@@ -30,12 +30,12 @@ spec:
         node-role.kubernetes.io/worker: worker
       securityContext:
         runAsNonRoot: true
+        runAsUser: 1000
         seccompProfile:
           type: RuntimeDefault
       containers:
         - name: frontend-public
-          image: registry.lantern.diiage/lantern/frontend-public:dev-bootstrap
-          imagePullPolicy: Always
+          image: registry.lantern.diiage/lantern/frontend-public:dev-bootst
           ports:
             - name: http
               containerPort: 3000
