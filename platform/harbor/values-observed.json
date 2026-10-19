@@ -1,0 +1,216 @@
+{
+  "core": {
+    "nodeSelector": {
+      "node-role.kubernetes.io/worker": "worker"
+    },
+    "resources": {
+      "limits": {
+        "cpu": "1",
+        "memory": "1Gi"
+      },
+      "requests": {
+        "cpu": "100m",
+        "memory": "256Mi"
+      }
+    }
+  },
+  "database": {
+    "internal": {
+      "nodeSelector": {
+        "node-role.kubernetes.io/worker": "worker"
+      },
+      "resources": {
+        "limits": {
+          "cpu": "1",
+          "memory": "1Gi"
+        },
+        "requests": {
+          "cpu": "100m",
+          "memory": "256Mi"
+        }
+      }
+    },
+    "type": "internal"
+  },
+  "existingSecretAdminPassword": "harbor-bootstrap",
+  "existingSecretAdminPasswordKey": "HARBOR_ADMIN_PASSWORD",
+  "existingSecretSecretKey": "harbor-bootstrap",
+  "exporter": {
+    "nodeSelector": {
+      "node-role.kubernetes.io/worker": "worker"
+    },
+    "resources": {
+      "limits": {
+        "cpu": "200m",
+        "memory": "256Mi"
+      },
+      "requests": {
+        "cpu": "20m",
+        "memory": "64Mi"
+      }
+    }
+  },
+  "expose": {
+    "ingress": {
+      "annotations": {
+        "traefik.ingress.kubernetes.io/router.entrypoints": "websecure",
+        "traefik.ingress.kubernetes.io/router.tls": "true"
+      },
+      "className": "traefik",
+      "hosts": {
+        "core": "registry.lantern.diiage"
+      }
+    },
+    "tls": {
+      "auto": {
+        "commonName": "registry.lantern.diiage"
+      },
+      "certSource": "auto",
+      "enabled": true
+    },
+    "type": "ingress"
+  },
+  "externalURL": "https://registry.lantern.diiage",
+  "jobservice": {
+    "nodeSelector": {
+      "node-role.kubernetes.io/worker": "worker"
+    },
+    "resources": {
+      "limits": {
+        "cpu": "500m",
+        "memory": "512Mi"
+      },
+      "requests": {
+        "cpu": "50m",
+        "memory": "128Mi"
+      }
+    }
+  },
+  "metrics": {
+    "enabled": true,
+    "serviceMonitor": {
+      "enabled": false
+    }
+  },
+  "persistence": {
+    "enabled": true,
+    "imageChartStorage": {
+      "filesystem": {
+        "rootdirectory": "/storage"
+      },
+      "type": "filesystem"
+    },
+    "persistentVolumeClaim": {
+      "database": {
+        "accessMode": "ReadWriteOnce",
+        "size": "5Gi",
+        "storageClass": "longhorn"
+      },
+      "jobservice": {
+        "jobLog": {
+          "accessMode": "ReadWriteOnce",
+          "size": "1Gi",
+          "storageClass": "longhorn"
+        }
+      },
+      "redis": {
+        "accessMode": "ReadWriteOnce",
+        "size": "2Gi",
+        "storageClass": "longhorn"
+      },
+      "registry": {
+        "accessMode": "ReadWriteOnce",
+        "size": "20Gi",
+        "storageClass": "longhorn"
+      },
+      "trivy": {
+        "accessMode": "ReadWriteOnce",
+        "size": "5Gi",
+        "storageClass": "longhorn"
+      }
+    },
+    "resourcePolicy": "keep"
+  },
+  "portal": {
+    "nodeSelector": {
+      "node-role.kubernetes.io/worker": "worker"
+    },
+    "resources": {
+      "limits": {
+        "cpu": "250m",
+        "memory": "256Mi"
+      },
+      "requests": {
+        "cpu": "50m",
+        "memory": "64Mi"
+      }
+    }
+  },
+  "redis": {
+    "internal": {
+      "nodeSelector": {
+        "node-role.kubernetes.io/worker": "worker"
+      },
+      "resources": {
+        "limits": {
+          "cpu": "500m",
+          "memory": "512Mi"
+        },
+        "requests": {
+          "cpu": "50m",
+          "memory": "128Mi"
+        }
+      }
+    },
+    "type": "internal"
+  },
+  "registry": {
+    "controller": {
+      "resources": {
+        "limits": {
+          "cpu": "500m",
+          "memory": "256Mi"
+        },
+        "requests": {
+          "cpu": "50m",
+          "memory": "64Mi"
+        }
+      }
+    },
+    "credentials": {},
+    "nodeSelector": {
+      "node-role.kubernetes.io/worker": "worker"
+    },
+    "registry": {
+      "resources": {
+        "limits": {
+          "cpu": "1",
+          "memory": "512Mi"
+        },
+        "requests": {
+          "cpu": "100m",
+          "memory": "128Mi"
+        }
+      }
+    }
+  },
+  "trivy": {
+    "enabled": true,
+    "nodeSelector": {
+      "node-role.kubernetes.io/worker": "worker"
+    },
+    "resources": {
+      "limits": {
+        "cpu": "1",
+        "memory": "1Gi"
+      },
+      "requests": {
+        "cpu": "200m",
+        "memory": "512Mi"
+      }
+    }
+  },
+  "updateStrategy": {
+    "type": "Recreate"
+  }
+}
