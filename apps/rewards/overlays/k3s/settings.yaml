@@ -9,27 +9,6 @@ spec:
         - name: api
           env:
             - name: ConnectionStrings__DefaultConnection
-              value: Host=rewards-db;Port=5432;Database=reward;Username=reward
+              value: Host=postgres-rw.database.svc.cluster.local;Port=5432;Database=lantern;Username=reward;Search Path=reward;Maximum Pool Size=10
             - name: Grpc__Placeholder__Address
               value: http://player-api.player.svc.cluster.local:8081
----
-apiVersion: apps/v1
-kind: StatefulSet
-metadata:
-  name: db
-spec:
-  template:
-    spec:
-      containers:
-        - name: postgres
-          env:
-            - name: POSTGRES_DB
-              value: reward
-            - name: POSTGRES_USER
-              value: reward
-          readinessProbe:
-            exec:
-              command: ["pg_isready", "-U", "reward", "-d", "reward"]
-          livenessProbe:
-            exec:
-              command: ["pg_isready", "-U", "reward", "-d", "reward"]
