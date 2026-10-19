@@ -46,7 +46,7 @@ spec:
               containerPort: 8081
           env:
             - name: ASPNETCORE_ENVIRONMENT
-              value: Development
+              value: Production
             - name: ConnectionStrings__DefaultConnection
               value: Host=db;Port=5432;Database=app;Username=app
             - name: ConnectionStrings__PasswordFile

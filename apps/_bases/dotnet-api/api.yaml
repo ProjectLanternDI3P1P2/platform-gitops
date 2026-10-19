@@ -46,7 +46,7 @@ spec:
               containerPort: 8081
           env:
             - name: ASPNETCORE_ENVIRONMENT
-              value: Development
+              value: Production
             - name: ConnectionStrings__DefaultConnection
               value: Host=postgres-rw.database.svc.cluster.local;Port=5432;Database=lantern;Maximum Pool Size=10
             - name: ConnectionStrings__PasswordFile
