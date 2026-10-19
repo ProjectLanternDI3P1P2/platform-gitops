@@ -2,8 +2,8 @@
 
 The K3s cluster currently runs Alloy as a DaemonSet in the `monitoring`
 namespace. The release was installed with Helm before it was represented in
-Git. `values-k3s.yaml` mirrors the non-secret values observed from Helm release
-revision 9 on 2026-10-01.
+Git. `values.yaml` is the single canonical values file used by its Argo CD
+Application and validation workflow. It preserves the existing log pipeline.
 
 The chart is pinned to `grafana/alloy` `1.13.0` by the Argo CD Application in
 `platform/argocd/applications/alloy.yaml`.

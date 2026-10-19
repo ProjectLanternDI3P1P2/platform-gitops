@@ -1,9 +1,5 @@
-# This file mirrors the non-secret values of the Alloy Helm release observed on
-# the K3s cluster on 2026-10-01. Keep the chart version pinned in the Argo CD
-# Application before changing these values.
 alloy:
   configMap:
-    create: true
     content: |-
       discovery.kubernetes "pods" {
         role = "pod"
@@ -58,14 +54,13 @@ alloy:
           url = "http://192.168.0.15:3100/loki/api/v1/push"
         }
       }
-
+    create: true
   mounts:
     varlog: true
-
   securityContext:
     allowPrivilegeEscalation: false
     capabilities:
       drop:
-        - ALL
+      - ALL
     runAsGroup: 0
     runAsUser: 0

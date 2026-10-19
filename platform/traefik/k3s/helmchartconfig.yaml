@@ -1,0 +1,94 @@
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: traefik
+  namespace: kube-system
+spec:
+  failurePolicy: reinstall
+  valuesContent: |
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: traefik
+          topologyKey: kubernetes.io/hostname
+    autoscaling:
+      behavior:
+        scaleDown:
+          policies:
+          - periodSeconds: 60
+            type: Pods
+            value: 1
+          stabilizationWindowSeconds: 300
+      enabled: true
+      maxReplicas: 6
+      metrics:
+      - resource:
+          name: cpu
+          target:
+            averageUtilization: 70
+            type: Utilization
+        type: Resource
+      minReplicas: 3
+    deployment:
+      kind: Deployment
+      replicas: null
+    ingressClass:
+      enabled: true
+      isDefaultClass: true
+    logs:
+      access:
+        enabled: true
+      general:
+        level: INFO
+    nodeSelector:
+      node-role.kubernetes.io/worker: worker
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
+    ports:
+      web:
+        expose:
+          default: true
+        exposedPort: 80
+        forwardedHeaders:
+          trustedIPs:
+          - 192.168.0.1/32
+          - 192.168.0.2/32
+          - 192.168.0.254/32
+        port: 8000
+      websecure:
+        expose:
+          default: true
+        exposedPort: 443
+        port: 8443
+    providers:
+      kubernetesIngress:
+        enabled: true
+        ingressClass: traefik
+        publishedService:
+          enabled: true
+    resources:
+      limits:
+        cpu: "1"
+        memory: 1Gi
+      requests:
+        cpu: 200m
+        memory: 256Mi
+    service:
+      spec:
+        externalTrafficPolicy: Local
+      type: LoadBalancer
+    topologySpreadConstraints:
+    - labelSelector:
+        matchLabels:
+          app.kubernetes.io/name: traefik
+      maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: DoNotSchedule
+    updateStrategy:
+      rollingUpdate:
+        maxSurge: 1
+        maxUnavailable: 0
+      type: RollingUpdate

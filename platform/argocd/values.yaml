@@ -1,6 +1,9 @@
-# Replace every REPLACE_* value before production deployment.
+# Desired configuration: provision Keycloak OIDC, its client Secret and TLS before sync.
+# This includes planned settings that are not yet active on the cluster.
 global:
-  domain: REPLACE_ARGOCD_DOMAIN
+  domain: argocd.lantern.diiage
+  nodeSelector:
+    node-role.kubernetes.io/worker: worker
 
 dex:
   enabled: false
@@ -12,12 +15,12 @@ redis-ha:
 
 configs:
   cm:
-    url: https://REPLACE_ARGOCD_DOMAIN
+    url: https://argocd.lantern.diiage
     admin.enabled: false
     exec.enabled: false
     oidc.config: |
       name: Keycloak
-      issuer: https://REPLACE_SSO_DOMAIN/realms/lantern
+      issuer: https://auth.lantern.diiage/realms/lantern
       clientID: argocd
       clientSecret: $oidc.keycloak.clientSecret
       requestedScopes:
@@ -63,7 +66,7 @@ server:
   ingress:
     enabled: true
     ingressClassName: traefik
-    hostname: REPLACE_ARGOCD_DOMAIN
+    hostname: argocd.lantern.diiage
     path: /
     pathType: Prefix
     tls: true

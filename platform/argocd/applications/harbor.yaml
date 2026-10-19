@@ -1,68 +1,43 @@
-{
-  "apiVersion": "argoproj.io/v1alpha1",
-  "metadata": {
-    "name": "harbor",
-    "labels": {
-      "app.kubernetes.io/part-of": "lantern-platform"
-    },
-    "namespace": "argocd"
-  },
-  "spec": {
-    "sources": [
-      {
-        "chart": "harbor",
-        "repoURL": "https://helm.goharbor.io",
-        "helm": {
-          "skipCrds": true,
-          "valueFiles": [
-            "$values/platform/harbor/values-observed.json"
-          ],
-          "releaseName": "harbor"
-        },
-        "targetRevision": "1.19.2"
-      },
-      {
-        "targetRevision": "main",
-        "ref": "values",
-        "repoURL": "https://github.com/ProjectLanternDI3P1P2/platform-gitops.git"
-      }
-    ],
-    "syncPolicy": {
-      "syncOptions": [
-        "CreateNamespace=false",
-        "RespectIgnoreDifferences=true",
-        "FailOnSharedResource=true"
-      ]
-    },
-    "ignoreDifferences": [
-      {
-        "group": "",
-        "jsonPointers": [
-          "/data",
-          "/stringData"
-        ],
-        "kind": "Secret"
-      },
-      {
-        "group": "apps",
-        "jsonPointers": [
-          "/spec/template/metadata/annotations"
-        ],
-        "kind": "Deployment"
-      },
-      {
-        "group": "apps",
-        "jsonPointers": [
-          "/spec/template/metadata/annotations"
-        ],
-        "kind": "StatefulSet"
-      }
-    ],
-    "project": "lantern-platform-k3s",
-    "destination": {
-      "server": "https://kubernetes.default.svc",
-      "namespace": "harbor"
-    }
-  },
-  "kind": "Application"
-}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  labels:
+    app.kubernetes.io/part-of: lantern-platform
+  name: harbor
+  namespace: argocd
+spec:
+  destination:
+    namespace: harbor
+    server: https://kubernetes.default.svc
+  ignoreDifferences:
+  - group: ""
+    jsonPointers:
+    - /data
+    - /stringData
+    kind: Secret
+  - group: apps
+    jsonPointers:
+    - /spec/template/metadata/annotations
+    kind: Deployment
+  - group: apps
+    jsonPointers:
+    - /spec/template/metadata/annotations
+    kind: StatefulSet
+  project: lantern-platform-k3s
+  sources:
+  - chart: harbor
+    helm:
+      releaseName: harbor
+      skipCrds: true
+      valueFiles:
+      - $values/platform/harbor/values.yaml
+    repoURL: https://helm.goharbor.io
+    targetRevision: 1.19.2
+  - ref: values
+    repoURL: https://github.com/ProjectLanternDI3P1P2/platform-gitops.git
+    targetRevision: main
+  syncPolicy:
+    syncOptions:
+    - CreateNamespace=false
+    - RespectIgnoreDifferences=true
+    - FailOnSharedResource=true

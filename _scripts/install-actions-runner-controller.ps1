@@ -61,7 +61,7 @@ finally {
     --version $chartVersion `
     --kubeconfig $KubeConfig `
     --namespace $controllerNamespace `
-    --values (Join-Path $platformPath 'values-controller.yaml') `
+    --values (Join-Path $platformPath 'controller/values.yaml') `
     --atomic --wait --timeout 10m
 if ($LASTEXITCODE -ne 0) {
     throw 'ARC controller installation failed.'
@@ -97,7 +97,7 @@ The private key content is read from the local file and is never printed.
     --version $chartVersion `
     --kubeconfig $KubeConfig `
     --namespace $runnerNamespace `
-    --values (Join-Path $platformPath 'values-runner-set.yaml') `
+    --values (Join-Path $platformPath 'runners/values.yaml') `
     --atomic --wait --timeout 10m
 if ($LASTEXITCODE -ne 0) {
     throw 'ARC runner scale-set installation failed.'

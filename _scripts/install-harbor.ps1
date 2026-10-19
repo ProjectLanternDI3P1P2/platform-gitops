@@ -11,7 +11,7 @@ $ErrorActionPreference = "Stop"
 $chartVersion = "1.19.2"
 $root = Split-Path -Parent $PSScriptRoot
 $namespaceManifest = Join-Path $root "platform\harbor\namespace.yaml"
-$valuesFile = Join-Path $root "platform\harbor\values-k3s.yaml"
+$valuesFile = Join-Path $root "platform\harbor\values.yaml"
 
 if (-not $KubeConfig) {
     throw "KubeConfig is required. Pass -KubeConfig or set KUBECONFIG."

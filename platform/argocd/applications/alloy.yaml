@@ -1,54 +1,35 @@
-{
-  "apiVersion": "argoproj.io/v1alpha1",
-  "metadata": {
-    "name": "alloy",
-    "labels": {
-      "app.kubernetes.io/part-of": "lantern-platform"
-    },
-    "namespace": "argocd"
-  },
-  "spec": {
-    "syncPolicy": {
-      "syncOptions": [
-        "CreateNamespace=false",
-        "RespectIgnoreDifferences=true",
-        "FailOnSharedResource=true"
-      ]
-    },
-    "project": "lantern-platform-k3s",
-    "sources": [
-      {
-        "chart": "alloy",
-        "repoURL": "https://grafana.github.io/helm-charts",
-        "helm": {
-          "skipCrds": true,
-          "valueFiles": [
-            "$values/observability/alloy/values-observed.json"
-          ],
-          "releaseName": "alloy"
-        },
-        "targetRevision": "1.13.0"
-      },
-      {
-        "targetRevision": "main",
-        "ref": "values",
-        "repoURL": "https://github.com/ProjectLanternDI3P1P2/platform-gitops.git"
-      }
-    ],
-    "destination": {
-      "server": "https://kubernetes.default.svc",
-      "namespace": "monitoring"
-    },
-    "ignoreDifferences": [
-      {
-        "group": "",
-        "jsonPointers": [
-          "/data",
-          "/stringData"
-        ],
-        "kind": "Secret"
-      }
-    ]
-  },
-  "kind": "Application"
-}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  labels:
+    app.kubernetes.io/part-of: lantern-platform
+  name: alloy
+  namespace: argocd
+spec:
+  destination:
+    namespace: monitoring
+    server: https://kubernetes.default.svc
+  ignoreDifferences:
+  - group: ""
+    jsonPointers:
+    - /data
+    - /stringData
+    kind: Secret
+  project: lantern-platform-k3s
+  sources:
+  - chart: alloy
+    helm:
+      releaseName: alloy
+      skipCrds: true
+      valueFiles:
+      - $values/observability/alloy/values.yaml
+    repoURL: https://grafana.github.io/helm-charts
+    targetRevision: 1.13.0
+  - ref: values
+    repoURL: https://github.com/ProjectLanternDI3P1P2/platform-gitops.git
+    targetRevision: main
+  syncPolicy:
+    syncOptions:
+    - CreateNamespace=false
+    - RespectIgnoreDifferences=true
+    - FailOnSharedResource=true

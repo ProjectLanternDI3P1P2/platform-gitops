@@ -10,7 +10,7 @@ Single K3s configuration with namespaces organized by service.
 
 Replace all REPLACE_* and repository markers before deployment. Provision Secrets outside Git. See [_docs/technical/keycloak.md](_docs/technical/keycloak.md) for the active Keycloak configuration.
 
-The observed platform/argocd/values-k3s.yaml records the existing private cluster. The hardened platform/argocd/values.yaml requires completed DNS, TLS and OIDC settings before adoption.
+Each Helm component has one canonical `values.yaml`, referenced by its Argo CD Application and validation workflow. Platform resources use YAML throughout. See [platform configuration](platform/README.md) for paths and adoption status.
 
 Validate with the GitOps workflow and _scripts/preflight.ps1. Review the Argo CD diff and existing resource ownership before syncing.
 
