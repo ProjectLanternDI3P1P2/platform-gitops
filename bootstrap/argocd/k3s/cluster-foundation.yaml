@@ -8,7 +8,7 @@ spec:
   source:
     repoURL: https://github.com/ProjectLanternDI3P1P2/platform-gitops.git
     targetRevision: main
-    path: clusters/prod
+    path: clusters/k3s
   destination:
     server: https://kubernetes.default.svc
     namespace: default
