@@ -5,7 +5,7 @@ namespace: rewards
 namePrefix: rewards-
 
 resources:
-  - ../../../_bases/dotnet-postgres
+  - ../../../_bases/dotnet-api
 
 patches:
   - path: settings.yaml
