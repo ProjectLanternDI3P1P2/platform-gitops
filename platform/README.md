@@ -32,9 +32,19 @@ deleting the review branch. The full K3s bootstrap also includes the same parent
 
 ## Existing data and credentials
 
-The observed JSON values were captured from the existing Helm releases on
-2026-10-19. Chart versions, release names and namespaces match those releases.
-No Secret values are included. Harbor's two inline password values are omitted.
+Each Helm chart has one canonical YAML values file:
+
+- `argocd/values.yaml`
+- `harbor/values.yaml`
+- `actions-runner-controller/controller/values.yaml`
+- `actions-runner-controller/runners/values.yaml`
+- `longhorn/values.yaml`
+- `../observability/alloy/values.yaml`
+
+These files preserve the settings used by the Applications. Chart versions,
+release names and namespaces remain unchanged. The former snapshots and
+alternative profiles were removed. No Secret values are included. Harbor's
+two inline password values are omitted.
 Its project sync window blocks manual and automated sync until credential
 preservation and the full rendered diff have been reviewed. Do not remove that
 window merely to make the status green.
