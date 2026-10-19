@@ -1,40 +1,81 @@
-configs:
-  params:
-    server.insecure: true
-controller:
-  resources:
-    limits:
-      cpu: "1"
-      memory: 1Gi
-    requests:
-      cpu: 100m
-      memory: 256Mi
-dex:
-  enabled: false
+# Desired configuration: provision Keycloak OIDC, its client Secret and TLS before sync.
+# This includes planned settings that are not yet active on the cluster.
 global:
   domain: argocd.lantern.diiage
   nodeSelector:
     node-role.kubernetes.io/worker: worker
-repoServer:
+
+dex:
+  enabled: false
+
+redis:
+  enabled: false
+redis-ha:
+  enabled: true
+
+configs:
+  cm:
+    url: https://argocd.lantern.diiage
+    admin.enabled: false
+    exec.enabled: false
+    oidc.config: |
+      name: Keycloak
+      issuer: https://auth.lantern.diiage/realms/lantern
+      clientID: argocd
+      clientSecret: $oidc.keycloak.clientSecret
+      requestedScopes:
+        - openid
+        - profile
+        - email
+        - groups
+  params:
+    server.insecure: true
+  rbac:
+    policy.default: ""
+    scopes: "[groups]"
+    policy.csv: |
+      g, /platform-ops, role:admin
+      p, role:developer, applications, get, */*, allow
+      p, role:developer, logs, get, */*, allow
+      g, /developers, role:developer
+
+controller:
   resources:
-    limits:
-      cpu: "1"
-      memory: 1Gi
-    requests:
-      cpu: 100m
-      memory: 256Mi
+    requests: {cpu: 500m, memory: 1Gi}
+    limits: {cpu: "2", memory: 2Gi}
+
+repoServer:
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
+  resources:
+    requests: {cpu: 250m, memory: 512Mi}
+    limits: {cpu: "2", memory: 2Gi}
+
 server:
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
+  resources:
+    requests: {cpu: 100m, memory: 256Mi}
+    limits: {cpu: "1", memory: 1Gi}
   ingress:
     enabled: true
-    hostname: argocd.lantern.diiage
     ingressClassName: traefik
+    hostname: argocd.lantern.diiage
     path: /
     pathType: Prefix
-    tls: false
-  resources:
-    limits:
-      cpu: 500m
-      memory: 512Mi
-    requests:
-      cpu: 50m
-      memory: 128Mi
+    tls: true
+    annotations:
+      cert-manager.io/cluster-issuer: REPLACE_CLUSTER_ISSUER
+      traefik.ingress.kubernetes.io/router.entrypoints: websecure
+
+applicationSet:
+  replicas: 2
+
+notifications:
+  enabled: true
