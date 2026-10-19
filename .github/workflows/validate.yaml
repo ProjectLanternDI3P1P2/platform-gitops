@@ -45,16 +45,16 @@ jobs:
           helm repo add longhorn https://charts.longhorn.io
           helm repo update
           helm template argocd argo/argo-cd --version 10.9.2 -n argocd --skip-crds \
-            -f platform/argocd/values-observed.json >/dev/null
+            -f platform/argocd/values.yaml >/dev/null
           helm template harbor harbor/harbor --version 1.19.2 -n harbor --skip-crds \
-            -f platform/harbor/values-observed.json >/dev/null
+            -f platform/harbor/values.yaml >/dev/null
           helm template alloy grafana/alloy --version 1.13.0 -n monitoring --skip-crds \
-            -f observability/alloy/values-observed.json >/dev/null
+            -f observability/alloy/values.yaml >/dev/null
           helm template longhorn longhorn/longhorn --version 1.12.1 -n longhorn-system --skip-crds \
-            -f platform/storage/longhorn-values-observed.json >/dev/null
+            -f platform/longhorn/values.yaml >/dev/null
           helm template arc oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set-controller \
             --version 0.14.2 -n arc-systems --skip-crds \
-            -f platform/actions-runner-controller/values-controller-observed.json >/dev/null
+            -f platform/actions-runner-controller/controller/values.yaml >/dev/null
           helm template lantern-k3s-builders oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set \
             --version 0.14.2 -n arc-runners --skip-crds \
-            -f platform/actions-runner-controller/values-runners-observed.json >/dev/null
+            -f platform/actions-runner-controller/runners/values.yaml >/dev/null
