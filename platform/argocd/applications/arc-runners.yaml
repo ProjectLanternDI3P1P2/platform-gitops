@@ -1,0 +1,54 @@
+{
+  "apiVersion": "argoproj.io/v1alpha1",
+  "metadata": {
+    "name": "arc-runners",
+    "labels": {
+      "app.kubernetes.io/part-of": "lantern-platform"
+    },
+    "namespace": "argocd"
+  },
+  "spec": {
+    "syncPolicy": {
+      "syncOptions": [
+        "CreateNamespace=false",
+        "RespectIgnoreDifferences=true",
+        "FailOnSharedResource=true"
+      ]
+    },
+    "project": "lantern-platform-k3s",
+    "sources": [
+      {
+        "chart": "gha-runner-scale-set",
+        "repoURL": "ghcr.io/actions/actions-runner-controller-charts",
+        "helm": {
+          "skipCrds": true,
+          "valueFiles": [
+            "$values/platform/actions-runner-controller/values-runners-observed.json"
+          ],
+          "releaseName": "lantern-k3s-builders"
+        },
+        "targetRevision": "0.14.2"
+      },
+      {
+        "targetRevision": "main",
+        "ref": "values",
+        "repoURL": "https://github.com/ProjectLanternDI3P1P2/platform-gitops.git"
+      }
+    ],
+    "destination": {
+      "server": "https://kubernetes.default.svc",
+      "namespace": "arc-runners"
+    },
+    "ignoreDifferences": [
+      {
+        "group": "",
+        "jsonPointers": [
+          "/data",
+          "/stringData"
+        ],
+        "kind": "Secret"
+      }
+    ]
+  },
+  "kind": "Application"
+}

@@ -35,25 +35,26 @@ jobs:
             kubectl kustomize "$(dirname "$file")" >/dev/null
           done < <(find . -type f \( -name kustomization.yaml -o -name kustomization.yml \) -not -path './.git/*')
 
-      - name: Validate pinned third-party charts
+      - name: Validate platform Helm charts
         shell: bash
         run: |
           set -euo pipefail
-          helm repo add traefik https://traefik.github.io/charts
-          helm template traefik traefik/traefik --version 41.6.0 --namespace traefik \
-            -f platform/traefik/values.yaml >/dev/null
           helm repo add argo https://argoproj.github.io/argo-helm
-          helm template argocd argo/argo-cd --version 10.9.2 --namespace argocd \
-            -f platform/argocd/values.yaml \
-            --set-string 'configs.secret.extra.oidc\.keycloak\.clientSecret=ci-placeholder' >/dev/null
-          helm template argocd argo/argo-cd --version 10.9.2 --namespace argocd \
-            -f platform/argocd/values-k3s.yaml >/dev/null
           helm repo add grafana https://grafana.github.io/helm-charts
-          helm template alloy grafana/alloy --version 1.13.0 --namespace monitoring \
-            -f observability/alloy/values-k3s.yaml >/dev/null
           helm repo add harbor https://helm.goharbor.io
+          helm repo add longhorn https://charts.longhorn.io
           helm repo update
-          helm template harbor harbor/harbor --version 1.19.2 --namespace harbor \
-            -f platform/harbor/values-k3s.yaml \
-            --set-string database.internal.password=ci-placeholder \
-            --set-string registry.credentials.password=ci-placeholder >/dev/null
+          helm template argocd argo/argo-cd --version 10.9.2 -n argocd --skip-crds \
+            -f platform/argocd/values-observed.json >/dev/null
+          helm template harbor harbor/harbor --version 1.19.2 -n harbor --skip-crds \
+            -f platform/harbor/values-observed.json >/dev/null
+          helm template alloy grafana/alloy --version 1.13.0 -n monitoring --skip-crds \
+            -f observability/alloy/values-observed.json >/dev/null
+          helm template longhorn longhorn/longhorn --version 1.12.1 -n longhorn-system --skip-crds \
+            -f platform/storage/longhorn-values-observed.json >/dev/null
+          helm template arc oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set-controller \
+            --version 0.14.2 -n arc-systems --skip-crds \
+            -f platform/actions-runner-controller/values-controller-observed.json >/dev/null
+          helm template lantern-k3s-builders oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set \
+            --version 0.14.2 -n arc-runners --skip-crds \
+            -f platform/actions-runner-controller/values-runners-observed.json >/dev/null

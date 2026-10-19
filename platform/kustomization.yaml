@@ -2,3 +2,10 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - argocd/applications/keycloak.yaml
+  - argocd/applications/argocd.yaml
+  - argocd/applications/harbor.yaml
+  - argocd/applications/arc-controller.yaml
+  - argocd/applications/arc-runners.yaml
+  - argocd/applications/longhorn.yaml
+  - argocd/applications/alloy.yaml
+  - argocd/applications/traefik.yaml

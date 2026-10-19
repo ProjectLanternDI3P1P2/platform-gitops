@@ -1,0 +1,63 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: lantern-platform-k3s
+  namespace: argocd
+spec:
+  description: Cluster platform components managed through reviewed GitOps changes
+  sourceRepos:
+    - https://github.com/ProjectLanternDI3P1P2/platform-gitops.git
+    - https://grafana.github.io/helm-charts
+    - https://argoproj.github.io/argo-helm
+    - https://helm.goharbor.io
+    - https://charts.longhorn.io
+    - ghcr.io/actions/actions-runner-controller-charts
+  destinations:
+    - namespace: argocd
+      server: https://kubernetes.default.svc
+    - namespace: default
+      server: https://kubernetes.default.svc
+    - namespace: monitoring
+      server: https://kubernetes.default.svc
+    - namespace: keycloak
+      server: https://kubernetes.default.svc
+    - namespace: harbor
+      server: https://kubernetes.default.svc
+    - namespace: arc-systems
+      server: https://kubernetes.default.svc
+    - namespace: arc-runners
+      server: https://kubernetes.default.svc
+    - namespace: longhorn-system
+      server: https://kubernetes.default.svc
+    - namespace: kube-system
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRole
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRoleBinding
+    - group: apiextensions.k8s.io
+      kind: CustomResourceDefinition
+    - group: admissionregistration.k8s.io
+      kind: MutatingWebhookConfiguration
+    - group: admissionregistration.k8s.io
+      kind: ValidatingWebhookConfiguration
+    - group: storage.k8s.io
+      kind: CSIDriver
+    - group: scheduling.k8s.io
+      kind: PriorityClass
+  # Harbor needs an explicit credential-preserving adoption review before sync.
+  # Its current internal database password is deliberately absent from Git.
+  syncWindows:
+    - kind: deny
+      schedule: '* * * * *'
+      duration: 24h
+      applications: [harbor]
+      manualSync: false
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
+  orphanedResources:
+    warn: true

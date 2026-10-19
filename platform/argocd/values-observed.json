@@ -1,0 +1,60 @@
+{
+  "configs": {
+    "params": {
+      "server.insecure": true
+    }
+  },
+  "controller": {
+    "resources": {
+      "limits": {
+        "cpu": "1",
+        "memory": "1Gi"
+      },
+      "requests": {
+        "cpu": "100m",
+        "memory": "256Mi"
+      }
+    }
+  },
+  "dex": {
+    "enabled": false
+  },
+  "global": {
+    "domain": "argocd.lantern.diiage",
+    "nodeSelector": {
+      "node-role.kubernetes.io/worker": "worker"
+    }
+  },
+  "repoServer": {
+    "resources": {
+      "limits": {
+        "cpu": "1",
+        "memory": "1Gi"
+      },
+      "requests": {
+        "cpu": "100m",
+        "memory": "256Mi"
+      }
+    }
+  },
+  "server": {
+    "ingress": {
+      "enabled": true,
+      "hostname": "argocd.lantern.diiage",
+      "ingressClassName": "traefik",
+      "path": "/",
+      "pathType": "Prefix",
+      "tls": false
+    },
+    "resources": {
+      "limits": {
+        "cpu": "500m",
+        "memory": "512Mi"
+      },
+      "requests": {
+        "cpu": "50m",
+        "memory": "128Mi"
+      }
+    }
+  }
+}

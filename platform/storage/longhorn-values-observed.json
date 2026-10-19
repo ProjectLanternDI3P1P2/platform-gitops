@@ -1,0 +1,417 @@
+{
+  "annotations": {},
+  "csi": {
+    "attacherReplicaCount": null,
+    "kubeletRootDir": null,
+    "podAntiAffinityPreset": null,
+    "provisionerReplicaCount": null,
+    "resizerReplicaCount": null,
+    "snapshotterReplicaCount": null
+  },
+  "defaultBackupStore": {
+    "backupTarget": null,
+    "backupTargetCredentialSecret": null,
+    "pollInterval": null
+  },
+  "defaultSettings": {
+    "allowCollectingLonghornUsageMetrics": null,
+    "allowEmptyDiskSelectorVolume": null,
+    "allowEmptyNodeSelectorVolume": null,
+    "allowRecurringJobWhileVolumeDetached": null,
+    "allowVolumeCreationWithDegradedAvailability": null,
+    "autoCleanupRecurringJobBackupSnapshot": null,
+    "autoCleanupSnapshotAfterOnDemandBackupCompleted": null,
+    "autoCleanupSnapshotWhenDeleteBackup": null,
+    "autoCleanupSystemGeneratedSnapshot": null,
+    "autoDeletePodWhenVolumeDetachedUnexpectedly": null,
+    "autoSalvage": null,
+    "backingImageCleanupWaitInterval": null,
+    "backingImageRecoveryWaitInterval": null,
+    "backupCompressionMethod": null,
+    "backupConcurrentLimit": null,
+    "backupExecutionTimeout": null,
+    "blacklistForAutoDeletePodWhenVolumeDetachedUnexpectedly": null,
+    "concurrentAutomaticEngineUpgradePerNodeLimit": null,
+    "concurrentReplicaRebuildPerNodeLimit": null,
+    "concurrentVolumeBackupRestorePerNodeLimit": null,
+    "createDefaultDiskLabeledNodes": null,
+    "csiAllowedTopologyKeys": null,
+    "csiStorageCapacityTracking": null,
+    "dataEngineCPUIsolationEnabled": null,
+    "dataEngineCPUMask": null,
+    "dataEngineHugepageEnabled": null,
+    "dataEngineInterruptModeEnabled": null,
+    "dataEngineIobufLargePoolSize": null,
+    "dataEngineIobufSmallPoolSize": null,
+    "dataEngineLogFlags": null,
+    "dataEngineLogLevel": null,
+    "dataEngineMemorySize": null,
+    "dataEngineNumberOfCPUCores": null,
+    "defaultBackupBlockSize": null,
+    "defaultDataLocality": null,
+    "defaultDataPath": "/var/lib/longhorn/",
+    "defaultLonghornStaticStorageClass": null,
+    "defaultReplicaCount": 3,
+    "defaultUblkNumberOfQueue": null,
+    "defaultUblkQueueDepth": null,
+    "deletingConfirmationFlag": null,
+    "detachManuallyAttachedVolumesWhenCordoned": null,
+    "disableRevisionCounter": "{\"v1\":\"true\"}",
+    "disableSchedulingOnCordonedNode": null,
+    "disableSnapshotPurge": null,
+    "endpointNetworkForRWXVolume": null,
+    "engineImagePodLivenessProbeFailureThreshold": null,
+    "engineImagePodLivenessProbePeriod": null,
+    "engineImagePodLivenessProbeTimeout": null,
+    "engineReplicaTimeout": null,
+    "failedBackupTTL": null,
+    "fastReplicaRebuildEnabled": null,
+    "freezeFilesystemForSnapshot": null,
+    "guaranteedInstanceManagerCPU": null,
+    "instanceManagerPodLivenessProbeTimeout": null,
+    "kubernetesClusterAutoscalerEnabled": null,
+    "kubernetesMetricsServerMetricsEnabled": null,
+    "logLevel": null,
+    "logPath": null,
+    "longGRPCTimeOut": null,
+    "managerUrl": null,
+    "nodeDiskHealthMonitoring": null,
+    "nodeDownPodDeletionPolicy": null,
+    "nodeDrainPolicy": null,
+    "offlineReplicaRebuilding": null,
+    "orphanResourceAutoDeletion": null,
+    "orphanResourceAutoDeletionGracePeriod": null,
+    "priorityClass": "longhorn-critical",
+    "rebuildConcurrentSyncLimit": null,
+    "recurringFailedJobsHistoryLimit": null,
+    "recurringJobMaxRetention": null,
+    "recurringSuccessfulJobsHistoryLimit": null,
+    "removeSnapshotsDuringFilesystemTrim": null,
+    "replicaAutoBalance": null,
+    "replicaDiskSoftAntiAffinity": null,
+    "replicaFileSyncHttpClientTimeout": null,
+    "replicaRebuildingBandwidthLimit": null,
+    "replicaReplenishmentWaitInterval": null,
+    "replicaSoftAntiAffinity": null,
+    "replicaZoneSoftAntiAffinity": null,
+    "restoreConcurrentLimit": null,
+    "restoreVolumeRecurringJobs": null,
+    "rwxVolumeFastFailover": null,
+    "snapshotCountWarningThreshold": null,
+    "snapshotDataIntegrity": null,
+    "snapshotDataIntegrityCronjob": null,
+    "snapshotDataIntegrityImmediateCheckAfterSnapshotCreation": null,
+    "snapshotHeavyTaskConcurrentLimit": null,
+    "snapshotMaxCount": null,
+    "storageMinimalAvailablePercentage": null,
+    "storageNetwork": null,
+    "storageOverProvisioningPercentage": null,
+    "storageReservedPercentageForDefaultDisk": 10,
+    "supportBundleFailedHistoryLimit": null,
+    "systemManagedCSIComponentsResourceLimits": null,
+    "systemManagedComponentsNodeSelector": null,
+    "systemManagedPodsImagePullPolicy": null,
+    "taintToleration": null,
+    "upgradeChecker": null,
+    "upgradeResponderURL": null,
+    "v1DataEngine": null,
+    "v2DataEngine": null
+  },
+  "enableGoCoverDir": false,
+  "enablePSP": false,
+  "extraObjects": [],
+  "global": {
+    "cattle": {
+      "systemDefaultRegistry": "",
+      "windowsCluster": {
+        "defaultSetting": {
+          "systemManagedComponentsNodeSelector": "kubernetes.io/os:linux",
+          "taintToleration": "cattle.io/os=linux:NoSchedule"
+        },
+        "enabled": false,
+        "nodeSelector": {
+          "kubernetes.io/os": "linux"
+        },
+        "tolerations": [
+          {
+            "effect": "NoSchedule",
+            "key": "cattle.io/os",
+            "operator": "Equal",
+            "value": "linux"
+          }
+        ]
+      }
+    },
+    "imagePullSecrets": [],
+    "imageRegistry": "",
+    "nodeSelector": {},
+    "timezone": "",
+    "tolerations": []
+  },
+  "httproute": {
+    "annotations": {},
+    "enabled": false,
+    "hostnames": [],
+    "parentRefs": [],
+    "path": "/",
+    "pathType": "PathPrefix"
+  },
+  "image": {
+    "csi": {
+      "attacher": {
+        "registry": "",
+        "repository": "longhornio/csi-attacher",
+        "tag": "v4.12.0"
+      },
+      "livenessProbe": {
+        "registry": "",
+        "repository": "longhornio/livenessprobe",
+        "tag": "v2.19.0"
+      },
+      "nodeDriverRegistrar": {
+        "registry": "",
+        "repository": "longhornio/csi-node-driver-registrar",
+        "tag": "v2.17.0"
+      },
+      "provisioner": {
+        "registry": "",
+        "repository": "longhornio/csi-provisioner",
+        "tag": "v5.3.0"
+      },
+      "resizer": {
+        "registry": "",
+        "repository": "longhornio/csi-resizer",
+        "tag": "v2.2.1"
+      },
+      "snapshotter": {
+        "registry": "",
+        "repository": "longhornio/csi-snapshotter",
+        "tag": "v8.6.0"
+      }
+    },
+    "longhorn": {
+      "backingImageManager": {
+        "registry": "",
+        "repository": "longhornio/backing-image-manager",
+        "tag": "v1.12.1"
+      },
+      "engine": {
+        "registry": "",
+        "repository": "longhornio/longhorn-engine",
+        "tag": "v1.12.1"
+      },
+      "instanceManager": {
+        "registry": "",
+        "repository": "longhornio/longhorn-instance-manager",
+        "tag": "v1.12.1"
+      },
+      "manager": {
+        "registry": "",
+        "repository": "longhornio/longhorn-manager",
+        "tag": "v1.12.1"
+      },
+      "shareManager": {
+        "registry": "",
+        "repository": "longhornio/longhorn-share-manager",
+        "tag": "v1.12.1"
+      },
+      "supportBundleKit": {
+        "registry": "",
+        "repository": "longhornio/support-bundle-kit",
+        "tag": "v0.0.92"
+      },
+      "ui": {
+        "registry": "",
+        "repository": "longhornio/longhorn-ui",
+        "tag": "v1.12.1"
+      }
+    },
+    "openshift": {
+      "oauthProxy": {
+        "registry": "",
+        "repository": "",
+        "tag": ""
+      }
+    },
+    "pullPolicy": "IfNotPresent"
+  },
+  "ingress": {
+    "annotations": {},
+    "enabled": false,
+    "extraHosts": [],
+    "host": "sslip.io",
+    "ingressClassName": null,
+    "path": "/",
+    "pathType": "ImplementationSpecific",
+    "secrets": null,
+    "secureBackends": false,
+    "tls": false,
+    "tlsSecret": "longhorn.local-tls"
+  },
+  "longhornDriver": {
+    "log": {
+      "format": "plain"
+    },
+    "nodeSelector": {},
+    "priorityClass": "longhorn-critical",
+    "tolerations": []
+  },
+  "longhornManager": {
+    "distro": "longhorn",
+    "log": {
+      "format": "plain"
+    },
+    "nodeSelector": {},
+    "priorityClass": "longhorn-critical",
+    "resources": {
+      "limits": {
+        "cpu": "500m",
+        "memory": "512Mi"
+      },
+      "requests": {
+        "cpu": "100m",
+        "memory": "256Mi"
+      }
+    },
+    "serviceAnnotations": {},
+    "serviceLabels": {},
+    "tolerations": [],
+    "updateStrategy": {
+      "rollingUpdate": {
+        "maxUnavailable": "100%"
+      }
+    }
+  },
+  "longhornUI": {
+    "affinity": {
+      "podAntiAffinity": {
+        "preferredDuringSchedulingIgnoredDuringExecution": [
+          {
+            "podAffinityTerm": {
+              "labelSelector": {
+                "matchExpressions": [
+                  {
+                    "key": "app",
+                    "operator": "In",
+                    "values": [
+                      "longhorn-ui"
+                    ]
+                  }
+                ]
+              },
+              "topologyKey": "kubernetes.io/hostname"
+            },
+            "weight": 1
+          }
+        ]
+      }
+    },
+    "nodeSelector": {},
+    "podDisruptionBudget": {
+      "enabled": false,
+      "maxUnavailable": "",
+      "minAvailable": 1
+    },
+    "priorityClass": "longhorn-critical",
+    "replicas": 1,
+    "tolerations": []
+  },
+  "metrics": {
+    "serviceMonitor": {
+      "additionalLabels": {},
+      "annotations": {},
+      "enabled": false,
+      "interval": "",
+      "metricRelabelings": [],
+      "relabelings": [],
+      "sampleLimit": 0,
+      "scrapeTimeout": ""
+    }
+  },
+  "namespaceOverride": "",
+  "networkPolicies": {
+    "enabled": false,
+    "kubeAPIServerSourceCIDRs": [],
+    "restrictInternalTraffic": true,
+    "type": "k3s"
+  },
+  "openshift": {
+    "enabled": false,
+    "ui": {
+      "port": 443,
+      "proxy": 8443,
+      "route": "longhorn-ui"
+    }
+  },
+  "persistence": {
+    "annotations": {},
+    "backingImage": {
+      "dataSourceParameters": null,
+      "dataSourceType": null,
+      "enable": false,
+      "expectedChecksum": null,
+      "name": null
+    },
+    "backupTargetName": "default",
+    "createStorageClass": true,
+    "dataEngine": "v1",
+    "defaultClass": true,
+    "defaultClassReplicaCount": 3,
+    "defaultDataLocality": "disabled",
+    "defaultDiskSelector": {
+      "enable": false,
+      "selector": ""
+    },
+    "defaultFsType": "ext4",
+    "defaultMkfsParams": "",
+    "defaultNodeSelector": {
+      "enable": false,
+      "selector": ""
+    },
+    "disableRevisionCounter": "true",
+    "migratable": false,
+    "nfsOptions": "",
+    "reclaimPolicy": "Delete",
+    "recurringJobSelector": {
+      "enable": false,
+      "jobList": []
+    },
+    "shareManagerNodeSelector": {
+      "enable": false,
+      "selector": ""
+    },
+    "shareManagerTolerations": {
+      "enable": false,
+      "tolerations": ""
+    },
+    "unmapMarkSnapChainRemoved": "ignored",
+    "volumeBindingMode": "Immediate"
+  },
+  "preUpgradeChecker": {
+    "jobEnabled": true,
+    "upgradeVersionCheck": true
+  },
+  "privateRegistry": {
+    "createSecret": null,
+    "registryPasswd": null,
+    "registrySecret": null,
+    "registryUrl": null,
+    "registryUser": null
+  },
+  "service": {
+    "manager": {
+      "nodePort": "",
+      "type": "ClusterIP"
+    },
+    "ui": {
+      "annotations": {},
+      "labels": {},
+      "loadBalancerClass": "",
+      "nodePort": null,
+      "type": "ClusterIP"
+    }
+  },
+  "serviceAccount": {
+    "annotations": {}
+  }
+}

@@ -1,22 +1,52 @@
 # Platform
 
-`kustomization.yaml` is the entry point of the Argo CD `platform` Application.
-It contains child Applications, rather than recursively deploying every YAML
-file in this directory.
+The Argo CD `platform` Application groups eight child Applications:
 
-The `keycloak` child manages `platform/keycloak`: Keycloak, its PostgreSQL
-database, Services, Ingress and PVC in the `keycloak` namespace. Credentials
-remain in the existing Secret and are never tracked in Git.
+| Application | Source | Destination | Adoption |
+| --- | --- | --- | --- |
+| keycloak | platform/keycloak | keycloak | Recreated resources; manual sync |
+| argocd | argo-cd 10.9.2 | argocd | Existing Helm release; manual sync |
+| harbor | harbor 1.19.2 | harbor | Visible; synchronization blocked pending credential review |
+| arc-controller | gha-runner-scale-set-controller 0.14.2 | arc-systems | Existing Helm release; manual sync |
+| arc-runners | gha-runner-scale-set 0.14.2 | arc-runners | Existing Helm release; manual sync |
+| alloy | alloy 1.13.0 | monitoring | Existing Helm release; manual sync |
+| longhorn | longhorn 1.12.1 | longhorn-system | Existing Helm release; manual sync |
+| traefik | platform/traefik/k3s | kube-system | HelmChartConfig only; K3s owns the workloads |
 
-The parent and child use manual synchronization and no automatic pruning.
-Neither Application has a deletion finalizer. Deleting an Application must not
-implicitly delete its database or volume.
+Use the `lantern-platform-k3s` project filter in Argo CD. Open `platform` to
+see child Applications, then open a child to inspect its resources and diff.
+Helm-backed workloads are not adopted or restarted merely by registering their
+Application. A manual first sync transfers reconciliation to Argo CD; stop using
+Helm CLI upgrades for that release after adoption.
 
-The parent project and Application are declared in `bootstrap/argocd/k3s`.
-Publish the reviewed Git revision before applying those declarations, then
-refresh and inspect both Applications before their first synchronization.
+## Branch review and main
 
-Harbor, runners, Traefik and Argo CD values remain in their component folders.
-They are not adopted automatically: existing Helm releases and the K3s Helm
-controller retain their current ownership. Add a child Application only after
-checking the running release and reviewing its rendered changes.
+`bootstrap/argocd/review` registers the parent against the review branch and
+`overlays/platform-review` pins all child Git sources to that same branch. It
+allows review in Argo CD before merging the PR, without syncing workloads.
+These overlays intentionally refer to `refactor/unify-k3s-platform`.
+
+After merge, apply `bootstrap/argocd/platform`, then manually synchronize the
+parent. This switches its children to main. Remove the review overlays before
+deleting the review branch. The full K3s bootstrap also includes the same parent.
+
+## Existing data and credentials
+
+The observed JSON values were captured from the existing Helm releases on
+2026-10-19. Chart versions, release names and namespaces match those releases.
+No Secret values are included. Harbor's two inline password values are omitted.
+Its project sync window blocks manual and automated sync until credential
+preservation and the full rendered diff have been reviewed. Do not remove that
+window merely to make the status green.
+
+Secret data is excluded from Helm Application comparisons and preserved during
+sync via RespectIgnoreDifferences. This works for existing resources; it does
+not bootstrap missing credentials. Harbor additionally ignores generated pod
+checksum annotations to avoid presenting secret regeneration as a rollout.
+These settings do not replace the first-sync review.
+
+All Applications use manual synchronization, no automatic pruning and no
+cascade-delete finalizer. Helm chart CRDs are not installed through these child
+Applications; existing CRD ownership is retained. Longhorn volumes and storage
+settings must be reviewed before its first sync. Traefik stays under the K3s
+Helm controller, with Argo CD tracking its existing HelmChartConfig.

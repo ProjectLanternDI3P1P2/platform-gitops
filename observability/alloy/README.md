@@ -6,7 +6,7 @@ Git. `values-k3s.yaml` mirrors the non-secret values observed from Helm release
 revision 9 on 2026-10-01.
 
 The chart is pinned to `grafana/alloy` `1.13.0` by the Argo CD Application in
-`bootstrap/argocd/k3s/alloy.yaml`.
+`platform/argocd/applications/alloy.yaml`.
 
 ## Adoption process
 
