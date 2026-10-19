@@ -41,9 +41,11 @@ Each Helm chart has one canonical YAML values file:
 - `longhorn/values.yaml`
 - `../observability/alloy/values.yaml`
 
-These files preserve the settings used by the Applications. Chart versions,
-release names and namespaces remain unchanged. The former snapshots and
-alternative profiles were removed. No Secret values are included. Harbor's
+These files define the intended settings used by the Applications. They retain
+planned configuration as well as necessary installation settings; they are not
+limited to the running release. Chart versions, release names and namespaces
+remain unchanged. The former snapshots and alternative profiles were removed.
+No Secret values are included. Harbor's
 two inline password values are omitted.
 Its project sync window blocks manual and automated sync until credential
 preservation and the full rendered diff have been reviewed. Do not remove that
@@ -60,3 +62,19 @@ cascade-delete finalizer. Helm chart CRDs are not installed through these child
 Applications; existing CRD ownership is retained. Longhorn volumes and storage
 settings must be reviewed before its first sync. Traefik stays under the K3s
 Helm controller, with Argo CD tracking its existing HelmChartConfig.
+
+## Planned changes retained during consolidation
+
+Argo CD retains its planned OIDC, RBAC, TLS, Redis HA and autoscaling settings.
+See [OIDC prerequisites](../_docs/technical/argocd-oidc.md) before syncing. These
+settings have not been activated by the file cleanup.
+
+Traefik retains the planned disruption budget, strict pod anti-affinity, ingress
+class and logging settings inside its single HelmChartConfig. Existing HPA,
+worker placement, trusted proxy addresses and traffic policy are retained.
+Strict anti-affinity requires a separate eligible worker for each replica;
+scaling above the current worker count needs additional eligible workers.
+
+Alloy retains the planned capability restrictions, disabled privilege escalation
+and readable River pipeline. Harbor and runner settings were also compared
+against the removed profiles; their planned keys were already retained.
