@@ -22,7 +22,7 @@ spec:
       releaseName: argocd
       skipCrds: true
       valueFiles:
-      - $values/platform/argocd/values-observed.json
+      - $values/platform/argocd/values.yaml
     repoURL: https://argoproj.github.io/argo-helm
     targetRevision: 10.9.2
   - ref: values
