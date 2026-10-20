@@ -1,0 +1,52 @@
+# Raccordement de Leaderboard à MongoDB (magasin d'événements bruts, ADR-0037) et à RabbitMQ
+# (seul consommateur). Noms de clés repris de leaderboard-backend :
+#   ConnectionStrings:Mongo, Mongo:*, RabbitMq:*, RawEventConsumer:*
+#
+# Secrets du namespace "leaderboard", créés à la main (JAMAIS dans Git) par
+# _scripts/bootstrap-data-services-secrets.ps1 :
+#   leaderboard-mongodb    clés "connection-string" (compte applicatif leaderboard)
+#                          et "migration-connection-string" (compte leaderboard-migrator)
+#   rabbitmq-credentials   type kubernetes.io/basic-auth, clés "username" et "password"
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+spec:
+  template:
+    spec:
+      containers:
+        - name: api
+          env:
+            - name: ConnectionStrings__Mongo
+              valueFrom:
+                secretKeyRef:
+                  name: leaderboard-mongodb
+                  key: connection-string
+            - name: Mongo__DatabaseName
+              value: progression_lake
+            - name: Mongo__CollectionName
+              value: raw_events
+            - name: RabbitMq__Enabled
+              value: "true"
+            - name: RabbitMq__HostName
+              value: rabbitmq.rabbitmq.svc.cluster.local
+            - name: RabbitMq__Port
+              value: "5672"
+            - name: RabbitMq__VirtualHost
+              value: /
+            - name: RabbitMq__UserName
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-credentials
+                  key: username
+            - name: RabbitMq__Password
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-credentials
+                  key: password
+            - name: RabbitMq__ExchangeName
+              value: progression.events
+            # Ignoré tant que l'image déployée n'inclut pas le consommateur
+            # (branche feature/raw-event-store de leaderboard-backend).
+            - name: RawEventConsumer__Enabled
+              value: "true"

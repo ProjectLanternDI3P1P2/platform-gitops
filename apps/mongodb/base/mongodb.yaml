@@ -1,0 +1,154 @@
+# MongoDB pour Leaderboard (ADR-0037 du dépôt leaderboard-backend : magasin d'événements bruts).
+#
+# Replica set "rs0" à UN membre : Leaderboard écrit avec w:majority + journal et se connecte
+# avec ?replicaSet=rs0, ce qui exige un replica set même avec une seule instance.
+# La redondance des données vient de Longhorn (3 copies, classe longhorn-stateful).
+#
+# Accès interne : mongodb.mongodb.svc.cluster.local:27017
+# Le membre du replica set est déclaré sous ce même nom (voir bootstrap-job.yaml), pour que
+# les pilotes des autres namespaces puissent le joindre après la découverte du replica set.
+#
+# Secrets du namespace "mongodb", créés à la main (JAMAIS dans Git) par
+# _scripts/bootstrap-data-services-secrets.ps1 :
+#   mongodb-root     type kubernetes.io/basic-auth, clés "username" et "password"
+#   mongodb-keyfile  clé "keyfile" (authentification interne du replica set)
+#   mongodb-users    clés "leaderboard" et "leaderboard-migrator" (mots de passe)
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongodb
+  labels:
+    app.kubernetes.io/name: mongodb
+spec:
+  selector:
+    app.kubernetes.io/name: mongodb
+  ports:
+    - name: mongodb
+      port: 27017
+      targetPort: mongodb
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mongodb
+  labels:
+    app.kubernetes.io/name: mongodb
+spec:
+  serviceName: mongodb
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: mongodb
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: mongodb
+    spec:
+      nodeSelector:
+        node-role.kubernetes.io/worker: worker
+      # Laisse le temps à mongod de vider son journal proprement à l'arrêt.
+      terminationGracePeriodSeconds: 60
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        # mongod refuse un keyfile lisible par le groupe : on le recopie en 0400,
+        # propriété de l'utilisateur mongodb, dans un volume mémoire.
+        - name: keyfile
+          image: mongo:7.0
+          command: ["sh", "-c", "cp /keyfile-src/keyfile /keyfile/keyfile && chmod 0400 /keyfile/keyfile"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: keyfile-src
+              mountPath: /keyfile-src
+              readOnly: true
+            - name: keyfile
+              mountPath: /keyfile
+      containers:
+        - name: mongodb
+          # Même version majeure que la CI de leaderboard-backend (mongo:7).
+          image: mongo:7.0
+          args:
+            - --replSet
+            - rs0
+            - --bind_ip_all
+            - --keyFile
+            - /keyfile/keyfile
+            # Cache WiredTiger borné : la limite mémoire du conteneur est de 1 Gi.
+            - --wiredTigerCacheSizeGB
+            - "0.25"
+          ports:
+            - name: mongodb
+              containerPort: 27017
+          env:
+            # Compte root créé uniquement au premier démarrage (volume vide).
+            - name: MONGO_INITDB_ROOT_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-root
+                  key: username
+            - name: MONGO_INITDB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-root
+                  key: password
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          startupProbe:
+            exec:
+              command: ["mongosh", "--quiet", "--norc", "--eval", "db.adminCommand('ping').ok"]
+            periodSeconds: 5
+            timeoutSeconds: 10
+            failureThreshold: 60
+          readinessProbe:
+            exec:
+              command: ["mongosh", "--quiet", "--norc", "--eval", "db.adminCommand('ping').ok"]
+            periodSeconds: 15
+            timeoutSeconds: 10
+          livenessProbe:
+            exec:
+              command: ["mongosh", "--quiet", "--norc", "--eval", "db.adminCommand('ping').ok"]
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 5
+          volumeMounts:
+            - name: data
+              mountPath: /data/db
+            - name: keyfile
+              mountPath: /keyfile
+              readOnly: true
+      volumes:
+        - name: keyfile-src
+          secret:
+            secretName: mongodb-keyfile
+            defaultMode: 0440
+        - name: keyfile
+          emptyDir:
+            medium: Memory
+            sizeLimit: 1Mi
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        # 3 copies Longhorn + Retain (voir platform/storage/longhorn-stateful.yaml).
+        storageClassName: longhorn-stateful
+        resources:
+          requests:
+            storage: 10Gi

@@ -1,0 +1,158 @@
+# Provisioning idempotent de RabbitMQ via l'API de management, rejoué à chaque synchronisation.
+#
+# Ce que font les applications elles-mêmes (code des dépôts *-backend) :
+#   - chaque producteur déclare son exchange "<service>.events" (topic, durable) ;
+#   - Leaderboard déclare son exchange "progression.events", sa file "leaderboard.raw-events",
+#     sa file de rejet "leaderboard.raw-events.dead" et lie sa file à progression.events ("#").
+#
+# Ce qui manque, et que ce Job crée : le routage des exchanges producteurs vers
+# progression.events. Les liaisons exchange -> exchange ci-dessous reprennent la liste
+# "RabbitMq:Subscriptions" de leaderboard-backend (appsettings.json). Les exchanges sont
+# déclarés avec les mêmes paramètres que dans le code, donc sans conflit.
+#
+# Comptes (vhost "/", valeur par défaut des applications) :
+#   producteur <s>  configure/write sur "<s>.events" uniquement, aucune lecture
+#   leaderboard     seul consommateur : progression.events et les files "leaderboard.*"
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rabbitmq-provisioning
+data:
+  VHOST: "/"
+  CONSUMER: leaderboard
+  CONSUMER_EXCHANGE: progression.events
+  # Regex sans antislash : [.] = un point littéral.
+  CONSUMER_QUEUE_PATTERN: "leaderboard[.].*"
+  PRODUCERS: player dungeon combat rewards
+  # Une ligne par liaison : <exchange producteur> <clé de routage>
+  BINDINGS: |
+    player.events player.game-session-started.v1
+    player.events player.game-session-ended.v1
+    player.events player.hero-created.v1
+    player.events player.game-session-member-joined.v1
+    dungeon.events dungeon.dungeon-run-started.v1
+    dungeon.events dungeon.room-entered.v1
+    dungeon.events dungeon.chest-opened.v1
+    dungeon.events dungeon.dungeon-run-ended.v1
+    combat.events combat.combat-started.v1
+    combat.events combat.action-resolved.v1
+    combat.events combat.combat-completed.v1
+    rewards.events rewards.reward-granted.v1
+    rewards.events rewards.inventory-item-consumed.v1
+    rewards.events rewards.equipment-changed.v1
+    rewards.events rewards.purchase-completed.v1
+  provision.sh: |
+    set -eu
+    API="http://rabbitmq.rabbitmq.svc.cluster.local:15672/api"
+    V=$(printf '%s' "$VHOST" | sed 's|/|%2F|g')
+
+    api() {
+      method="$1"; path="$2"; body="$3"
+      curl -fsS -u "$ADMIN_USERNAME:$ADMIN_PASSWORD" -H 'content-type: application/json' \
+        -X "$method" "$API$path" -d "$body" >/dev/null
+    }
+
+    echo "Attente de RabbitMQ..."
+    until curl -fsS -u "$ADMIN_USERNAME:$ADMIN_PASSWORD" "$API/overview" >/dev/null 2>&1; do sleep 5; done
+
+    api PUT "/vhosts/$V" '{}'
+
+    user() {
+      name="$1"; configure="$2"; write="$3"; read="$4"
+      pw=$(cat "/secrets/users/$name")
+      [ -n "$pw" ] || { echo "Mot de passe vide pour $name" >&2; exit 1; }
+      api PUT "/users/$name" "{\"password\":\"$pw\",\"tags\":\"\"}"
+      api PUT "/permissions/$V/$name" \
+        "{\"configure\":\"$configure\",\"write\":\"$write\",\"read\":\"$read\"}"
+      echo "Compte $name : configure=$configure write=$write read=$read"
+    }
+
+    exchange() {
+      api PUT "/exchanges/$V/$1" '{"type":"topic","durable":true,"auto_delete":false,"internal":false,"arguments":{}}'
+    }
+
+    dot() { printf '%s' "$1" | sed 's|[.]|[.]|g'; }
+
+    for p in $PRODUCERS; do
+      own="^$(dot "$p.events")\$"
+      user "$p" "$own" "$own" '^$'
+    done
+    consumer="^($(dot "$CONSUMER_EXCHANGE")|$CONSUMER_QUEUE_PATTERN)\$"
+    user "$CONSUMER" "$consumer" "$consumer" "$consumer"
+
+    exchange "$CONSUMER_EXCHANGE"
+    printf '%s\n' "$BINDINGS" | while read -r source key; do
+      [ -n "$source" ] || continue
+      exchange "$source"
+      api POST "/bindings/$V/e/$source/e/$CONSUMER_EXCHANGE" "{\"routing_key\":\"$key\",\"arguments\":{}}"
+      echo "Liaison $source --[$key]--> $CONSUMER_EXCHANGE"
+    done
+    echo "Provisioning RabbitMQ terminé."
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: rabbitmq-provisioning
+  annotations:
+    # Après que le StatefulSet est Healthy ; l'ancien Job est supprimé avant chaque relance.
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 6
+  template:
+    spec:
+      restartPolicy: OnFailure
+      nodeSelector:
+        node-role.kubernetes.io/worker: worker
+      securityContext:
+        runAsNonRoot: true
+        # Utilisateur curl_user de l'image curlimages/curl.
+        runAsUser: 100
+        runAsGroup: 101
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: provision
+          image: curlimages/curl:8.10.1
+          envFrom:
+            - configMapRef:
+                name: rabbitmq-provisioning
+          env:
+            - name: ADMIN_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-admin
+                  key: username
+            - name: ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-admin
+                  key: password
+          command: ["/bin/sh", "/scripts/provision.sh"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 20m
+              memory: 32Mi
+            limits:
+              memory: 64Mi
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+              readOnly: true
+            - name: users
+              mountPath: /secrets/users
+              readOnly: true
+      volumes:
+        - name: scripts
+          configMap:
+            name: rabbitmq-provisioning
+            items:
+              - key: provision.sh
+                path: provision.sh
+        - name: users
+          secret:
+            secretName: rabbitmq-users

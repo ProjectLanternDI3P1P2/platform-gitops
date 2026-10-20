@@ -9,6 +9,8 @@ resources:
 
 patches:
   - path: settings.yaml
+  # MongoDB + RabbitMQ (voir data-services.yaml).
+  - path: data-services.yaml
 
 images:
   - name: registry.lantern.diiage/lantern/backend
