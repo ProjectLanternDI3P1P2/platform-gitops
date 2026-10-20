@@ -42,3 +42,28 @@ spec:
                 name: dungeon-api
                 port:
                   name: http
+
+    - host: groupe7.diiage.org
+      http:
+        paths:
+          - path: /dungeon/health
+            pathType: Prefix
+            backend:
+              service:
+                name: dungeon-api
+                port:
+                  name: http
+          - path: /dungeon/openapi
+            pathType: Prefix
+            backend:
+              service:
+                name: dungeon-api
+                port:
+                  name: http
+          - path: /dungeon/scalar
+            pathType: Prefix
+            backend:
+              service:
+                name: dungeon-api
+                port:
+                  name: http

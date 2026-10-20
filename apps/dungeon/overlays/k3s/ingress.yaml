@@ -37,7 +37,7 @@ spec:
                 name: dungeon-api
                 port:
                   name: http
-          - path: /api/v1/hero-classes
+          - path: /api/v1/dungeon-runs
             pathType: Prefix
             backend:
               service:
