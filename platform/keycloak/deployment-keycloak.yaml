@@ -1,130 +1,178 @@
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: keycloak
   namespace: keycloak
+  labels:
+    app: keycloak
+
 spec:
-  progressDeadlineSeconds: 600
   replicas: 1
-  revisionHistoryLimit: 10
+  revisionHistoryLimit: 3
+  progressDeadlineSeconds: 600
+
   selector:
     matchLabels:
       app: keycloak
+
   strategy:
-    rollingUpdate:
-      maxSurge: 25%
-      maxUnavailable: 25%
     type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+
   template:
     metadata:
       labels:
         app: keycloak
+
     spec:
-      containers:
-      - args:
-        - start
-        - --hostname=http://auth.lantern.diiage
-        - --http-enabled=true
-        - --proxy-headers=xforwarded
-        env:
-        - name: KC_BOOTSTRAP_ADMIN_USERNAME
-          valueFrom:
-            secretKeyRef:
-              key: KEYCLOAK_ADMIN
-              name: keycloak-secrets
-        - name: KC_BOOTSTRAP_ADMIN_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              key: KEYCLOAK_ADMIN_PASSWORD
-              name: keycloak-secrets
-        - name: KC_DB
-          value: postgres
-        - name: KC_DB_URL
-          value: jdbc:postgresql://postgresql-keycloak.keycloak.svc.cluster.local:5432/keycloak
-        - name: KC_DB_USERNAME
-          valueFrom:
-            secretKeyRef:
-              key: POSTGRES_USER
-              name: keycloak-secrets
-        - name: KC_DB_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              key: POSTGRES_PASSWORD
-              name: keycloak-secrets
-        - name: KC_DB_SCHEMA
-          value: public
-        - name: KC_HOSTNAME
-          value: "https://groupe7.diiage.org/auth"
-        - name: KC_HTTP_RELATIVE_PATH
-          value: "/auth"
-        - name: KC_HTTP_ENABLED
-          value: "true"
-        - name: KC_PROXY_HEADERS
-          value: "xforwarded"
-        image: quay.io/keycloak/keycloak:26.7.4
-        imagePullPolicy: IfNotPresent
-        name: keycloak
-        ports:
-        - containerPort: 8080
-          protocol: TCP
-        readinessProbe:
-          failureThreshold: 3
-          httpGet:
-            path: /realms/master
-            port: 8080
-            scheme: HTTP
-          periodSeconds: 5
-          successThreshold: 1
-          timeoutSeconds: 1
-        resources:
-          limits:
-            memory: 1536Mi
-          requests:
-            cpu: 250m
-            memory: 1Gi
-        startupProbe:
-          failureThreshold: 60
-          httpGet:
-            path: /realms/master
-            port: 8080
-            scheme: HTTP
-          periodSeconds: 5
-          successThreshold: 1
-          timeoutSeconds: 1
-        terminationMessagePath: /dev/termination-log
-        terminationMessagePolicy: File
-      dnsPolicy: ClusterFirst
-      initContainers:
-      - command:
-        - sh
-        - -c
-        - |
-          echo "Attente de PostgreSQL..."
-          until pg_isready \
-            -h postgresql-keycloak \
-            -p 5432 \
-            -U keycloak \
-            -d keycloak
-          do
-            echo "PostgreSQL pas encore prêt..."
-            sleep 2
-          done
-          echo "PostgreSQL prêt."
-        env:
-        - name: PGPASSWORD
-          valueFrom:
-            secretKeyRef:
-              key: POSTGRES_PASSWORD
-              name: keycloak-secrets
-        image: postgres:16-alpine
-        imagePullPolicy: IfNotPresent
-        name: wait-for-postgresql
-        resources: {}
-        terminationMessagePath: /dev/termination-log
-        terminationMessagePolicy: File
       nodeSelector:
         node-role.kubernetes.io/worker: worker
-      restartPolicy: Always
-      schedulerName: default-scheduler
-      securityContext: {}
-      terminationGracePeriodSeconds: 30
+
+      terminationGracePeriodSeconds: 60
+
+      initContainers:
+        - name: wait-for-postgresql
+          image: postgres:16-alpine
+          imagePullPolicy: IfNotPresent
+
+          command:
+            - sh
+            - -c
+            - |
+              echo "Attente de PostgreSQL..."
+              until pg_isready \
+                -h postgresql-keycloak \
+                -p 5432 \
+                -U "$POSTGRES_USER" \
+                -d keycloak
+              do
+                echo "PostgreSQL pas encore prêt..."
+                sleep 2
+              done
+              echo "PostgreSQL prêt."
+
+          env:
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-secrets
+                  key: POSTGRES_USER
+
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-secrets
+                  key: POSTGRES_PASSWORD
+
+      containers:
+        - name: keycloak
+          image: quay.io/keycloak/keycloak:26.7.4
+          imagePullPolicy: IfNotPresent
+
+          args:
+            - start
+
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+
+            - name: management
+              containerPort: 9000
+              protocol: TCP
+
+          env:
+            # Administration
+            - name: KC_BOOTSTRAP_ADMIN_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-secrets
+                  key: KEYCLOAK_ADMIN
+
+            - name: KC_BOOTSTRAP_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-secrets
+                  key: KEYCLOAK_ADMIN_PASSWORD
+
+            # PostgreSQL
+            - name: KC_DB
+              value: postgres
+
+            - name: KC_DB_URL
+              value: jdbc:postgresql://postgresql-keycloak.keycloak.svc.cluster.local:5432/keycloak
+
+            - name: KC_DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-secrets
+                  key: POSTGRES_USER
+
+            - name: KC_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-secrets
+                  key: POSTGRES_PASSWORD
+
+            - name: KC_DB_SCHEMA
+              value: public
+
+            # URL publique
+            - name: KC_HOSTNAME
+              value: "https://groupe7.diiage.org/auth"
+
+            - name: KC_HTTP_RELATIVE_PATH
+              value: "/auth"
+
+            # Reverse proxy Traefik
+            - name: KC_HTTP_ENABLED
+              value: "true"
+
+            - name: KC_PROXY_HEADERS
+              value: "xforwarded"
+
+            # Health checks
+            - name: KC_HEALTH_ENABLED
+              value: "true"
+
+            - name: KC_HTTP_MANAGEMENT_RELATIVE_PATH
+              value: "/"
+
+          startupProbe:
+            httpGet:
+              path: /health/started
+              port: management
+              scheme: HTTP
+            periodSeconds: 5
+            failureThreshold: 60
+            timeoutSeconds: 3
+
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: management
+              scheme: HTTP
+            periodSeconds: 10
+            failureThreshold: 3
+            timeoutSeconds: 3
+
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: management
+              scheme: HTTP
+            periodSeconds: 20
+            failureThreshold: 3
+            timeoutSeconds: 3
+
+          resources:
+            requests:
+              cpu: 250m
+              memory: 1Gi
+
+            limits:
+              cpu: 900m
+              memory: 1536Mi

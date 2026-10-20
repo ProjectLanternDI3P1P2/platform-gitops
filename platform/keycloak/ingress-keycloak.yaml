@@ -5,13 +5,9 @@ metadata:
   name: keycloak
   namespace: keycloak
   annotations:
-    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.entrypoints: web
 spec:
   ingressClassName: traefik
-  tls:
-    - hosts:
-        - groupe7.diiage.org
-      secretName: keycloak-tls
   rules:
     - host: groupe7.diiage.org
       http:
