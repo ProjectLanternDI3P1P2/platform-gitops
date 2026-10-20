@@ -8,6 +8,8 @@ resources:
   - ../../../_bases/dotnet-api
 
 patches:
+  # RabbitMQ commun (voir rabbitmq.yaml).
+  - path: rabbitmq.yaml
   - path: settings.yaml
 
 images:

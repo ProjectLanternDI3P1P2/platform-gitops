@@ -10,6 +10,8 @@ resources:
   - diagnostics-ingress.yaml
 
 patches:
+  # RabbitMQ commun (voir rabbitmq.yaml).
+  - path: rabbitmq.yaml
   - path: settings.yaml
 
 images:

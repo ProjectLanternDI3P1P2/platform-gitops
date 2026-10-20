@@ -1,0 +1,39 @@
+# Raccordement au RabbitMQ commun (voir _docs/technical/mongodb-rabbitmq.md, branche
+# feat/mongodb-rabbitmq). Noms de clés de la section "RabbitMq" de appsettings.json.
+# Désactivé tant que l'équipe combat ne l'a pas validé : passer RabbitMq__Enabled à "true".
+#
+# Secret du namespace "combat", créé à la main (JAMAIS dans Git) par
+# _scripts/bootstrap-data-services-secrets.ps1 :
+#   rabbitmq-credentials  type kubernetes.io/basic-auth, clés "username" et "password"
+#   (compte combat : écriture sur l'exchange combat.events uniquement)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+spec:
+  template:
+    spec:
+      containers:
+        - name: api
+          env:
+            - name: RabbitMq__Enabled
+              value: "false"
+            - name: RabbitMq__HostName
+              value: rabbitmq.rabbitmq.svc.cluster.local
+            - name: RabbitMq__Port
+              value: "5672"
+            - name: RabbitMq__VirtualHost
+              value: /
+            - name: RabbitMq__UserName
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-credentials
+                  key: username
+            - name: RabbitMq__Password
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-credentials
+                  key: password
+            # Seul exchange sur lequel le compte combat peut écrire.
+            - name: RabbitMq__ExchangeName
+              value: combat.events

@@ -8,6 +8,8 @@ resources:
   - ingress.yaml
 
 patches:
+  # RabbitMQ commun (voir rabbitmq.yaml).
+  - path: rabbitmq.yaml
   # Origines CORS autorisées (le front).
   - path: cors.yaml
   # Temporaire : image sur Docker Hub (voir dockerhub-image.yaml).
