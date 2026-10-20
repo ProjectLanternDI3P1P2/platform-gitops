@@ -1,0 +1,181 @@
+# Initialisation idempotente de MongoDB, rejouée à chaque synchronisation Argo CD :
+#   1. initialise le replica set rs0 s'il ne l'est pas encore ;
+#   2. crée la collection raw_events, son validateur et ses index ;
+#   3. crée ou met à jour les comptes de Leaderboard (un changement de mot de passe dans
+#      le Secret mongodb-users est donc appliqué à la synchronisation suivante).
+#
+# L'étape 2 reprend RawEventCollectionInitializer (leaderboard-backend, branche
+# feature/raw-event-store) : l'image n'a aucun point d'entrée qui l'exécute (seuls les tests
+# l'appellent), et le compte applicatif ne peut pas créer d'index. Toute évolution du schéma
+# dans leaderboard-backend doit être reportée ici.
+#
+# Comptes, tous définis sur la base progression_lake (authSource=progression_lake) :
+#   leaderboard           compte applicatif : find + insert uniquement (ADR-0037, magasin
+#                         en ajout seul : pas d'update ni de delete)
+#   leaderboard-migrator  compte de migration prévu par ADR-0037 (collection, validateur,
+#                         index), pour les migrations futures de l'équipe progression
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mongodb-bootstrap
+data:
+  APP_DATABASE: progression_lake
+  APP_COLLECTION: raw_events
+  APP_USER: leaderboard
+  MIGRATOR_USER: leaderboard-migrator
+  RS_MEMBER_HOST: mongodb-0.mongodb-headless.mongodb.svc.cluster.local:27017
+  bootstrap.js: |
+    const env = process.env;
+
+    let initiated = true;
+    try {
+      rs.status();
+    } catch (e) {
+      if (e.codeName !== 'NotYetInitialized') throw e;
+      initiated = false;
+    }
+    if (!initiated) {
+      print('Initialisation du replica set rs0 avec ' + env.RS_MEMBER_HOST);
+      rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: env.RS_MEMBER_HOST }] });
+    }
+    for (let i = 0; i < 60 && !db.hello().isWritablePrimary; i++) sleep(1000);
+    if (!db.hello().isWritablePrimary) throw new Error('rs0 n\'a pas de primaire');
+
+    const app = db.getSiblingDB(env.APP_DATABASE);
+
+    // Même schéma et mêmes index que RawEventCollectionInitializer.
+    const str = { bsonType: 'string' };
+    const rawEventSchema = {
+      bsonType: 'object',
+      required: ['messageId', 'type', 'version', 'correlationId', 'occurredAt', 'receivedAt',
+        'producer', 'payload'],
+      properties: {
+        messageId: { bsonType: 'binData' },
+        transactionId: str,
+        type: str,
+        version: { bsonType: 'int' },
+        correlationId: str,
+        causationId: str,
+        occurredAt: { bsonType: 'date' },
+        receivedAt: { bsonType: 'date' },
+        producer: str,
+        payload: { bsonType: 'binData' },
+      },
+    };
+    if (!app.getCollectionNames().includes(env.APP_COLLECTION)) {
+      app.createCollection(env.APP_COLLECTION, { validator: { $jsonSchema: rawEventSchema } });
+      print('Collection créée : ' + env.APP_COLLECTION);
+    }
+    // Sans effet si l'index existe déjà avec le même nom et la même clé.
+    const rawEvents = app.getCollection(env.APP_COLLECTION);
+    rawEvents.createIndex({ receivedAt: 1, _id: 1 }, { name: 'receivedAt_id' });
+    rawEvents.createIndex({ transactionId: 1 }, { name: 'transactionId' });
+    rawEvents.createIndex({ messageId: 1 }, { name: 'messageId' });
+
+    const appRole = 'rawEventsAppendOnly';
+    const appPrivileges = [
+      { resource: { db: env.APP_DATABASE, collection: '' }, actions: ['find', 'insert'] },
+    ];
+    if (app.getRole(appRole)) {
+      app.updateRole(appRole, { privileges: appPrivileges, roles: [] });
+    } else {
+      app.createRole({ role: appRole, privileges: appPrivileges, roles: [] });
+    }
+
+    function upsertUser(name, pwd, roles) {
+      if (!pwd) throw new Error('Mot de passe vide pour ' + name);
+      if (app.getUser(name)) {
+        app.updateUser(name, { pwd: pwd, roles: roles });
+        print('Compte mis à jour : ' + name);
+      } else {
+        app.createUser({ user: name, pwd: pwd, roles: roles });
+        print('Compte créé : ' + name);
+      }
+    }
+
+    upsertUser(env.APP_USER, env.APP_PASSWORD, [{ role: appRole, db: env.APP_DATABASE }]);
+    upsertUser(env.MIGRATOR_USER, env.MIGRATOR_PASSWORD, [
+      { role: 'readWrite', db: env.APP_DATABASE },
+      { role: 'dbAdmin', db: env.APP_DATABASE },
+    ]);
+    print('Bootstrap MongoDB terminé.');
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: mongodb-bootstrap
+  annotations:
+    # Après que le StatefulSet est Healthy ; l'ancien Job est supprimé avant chaque relance.
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 6
+  template:
+    spec:
+      restartPolicy: OnFailure
+      nodeSelector:
+        node-role.kubernetes.io/worker: worker
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: bootstrap
+          image: mongo:7.0
+          envFrom:
+            - configMapRef:
+                name: mongodb-bootstrap
+          env:
+            - name: ROOT_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-root
+                  key: username
+            - name: ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-root
+                  key: password
+            - name: APP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-users
+                  key: leaderboard
+            - name: MIGRATOR_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-users
+                  key: leaderboard-migrator
+          command: ["sh", "-c"]
+          args:
+            - |
+              set -e
+              URI="mongodb://mongodb.mongodb.svc.cluster.local:27017/admin?directConnection=true"
+              echo "Attente de MongoDB..."
+              until mongosh --quiet --norc "$URI" --eval "db.adminCommand('ping').ok" >/dev/null 2>&1; do sleep 3; done
+              mongosh --quiet --norc "$URI" \
+                --username "$ROOT_USERNAME" --password "$ROOT_PASSWORD" --authenticationDatabase admin \
+                --file /scripts/bootstrap.js
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              memory: 256Mi
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+              readOnly: true
+      volumes:
+        - name: scripts
+          configMap:
+            name: mongodb-bootstrap
+            items:
+              - key: bootstrap.js
+                path: bootstrap.js

@@ -1,0 +1,25 @@
+# RabbitMQ est commun à tous les microservices : AMQP (5672) et métriques (15692) restent
+# ouverts à tout le cluster. L'API de management (15672), qui accepte le compte admin,
+# n'est joignable que depuis le namespace rabbitmq (Job rabbitmq-provisioning).
+# kubectl port-forward passe par le kubelet et n'est pas filtré.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: rabbitmq-ingress
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: rabbitmq
+  policyTypes:
+    - Ingress
+  ingress:
+    - ports:
+        - port: 5672
+          protocol: TCP
+        - port: 15692
+          protocol: TCP
+    - from:
+        - podSelector: {}
+      ports:
+        - port: 15672
+          protocol: TCP

@@ -1,0 +1,148 @@
+# RabbitMQ commun à tous les microservices.
+# Accès interne : rabbitmq.rabbitmq.svc.cluster.local:5672 (AMQP).
+# Interface de management (15672) et métriques Prometheus (15692) : internes au cluster.
+#
+# Secrets du namespace "rabbitmq", créés à la main (JAMAIS dans Git) par
+# _scripts/bootstrap-data-services-secrets.ps1 :
+#   rabbitmq-admin  type kubernetes.io/basic-auth, clés "username" et "password"
+#                   (compte créé au premier démarrage uniquement, volume vide)
+#   rabbitmq-users  une clé par compte applicatif : leaderboard, player, dungeon, combat, rewards
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rabbitmq-config
+data:
+  20-lantern.conf: |
+    listeners.tcp.default = 5672
+    management.tcp.port = 15672
+    # Le compte guest ne peut se connecter qu'en local (comportement par défaut de RabbitMQ).
+    loopback_users.guest = true
+    disk_free_limit.absolute = 1GB
+    # Relatif à la limite mémoire du conteneur (cgroup).
+    vm_memory_high_watermark.relative = 0.6
+  enabled_plugins: |
+    [rabbitmq_management,rabbitmq_prometheus].
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq
+  labels:
+    app.kubernetes.io/name: rabbitmq
+spec:
+  selector:
+    app.kubernetes.io/name: rabbitmq
+  ports:
+    - name: amqp
+      port: 5672
+      targetPort: amqp
+    - name: management
+      port: 15672
+      targetPort: management
+    - name: prometheus
+      port: 15692
+      targetPort: prometheus
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: rabbitmq
+  labels:
+    app.kubernetes.io/name: rabbitmq
+spec:
+  serviceName: rabbitmq
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: rabbitmq
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: rabbitmq
+    spec:
+      nodeSelector:
+        node-role.kubernetes.io/worker: worker
+      terminationGracePeriodSeconds: 60
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: rabbitmq
+          # Même version majeure que les compose des microservices (rabbitmq:4).
+          image: rabbitmq:4.1-management
+          ports:
+            - name: amqp
+              containerPort: 5672
+            - name: management
+              containerPort: 15672
+            - name: prometheus
+              containerPort: 15692
+          env:
+            - name: RABBITMQ_DEFAULT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-admin
+                  key: username
+            - name: RABBITMQ_DEFAULT_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-admin
+                  key: password
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          startupProbe:
+            exec:
+              command: ["rabbitmq-diagnostics", "-q", "ping"]
+            periodSeconds: 10
+            timeoutSeconds: 20
+            failureThreshold: 30
+          readinessProbe:
+            exec:
+              command: ["rabbitmq-diagnostics", "-q", "check_port_connectivity"]
+            periodSeconds: 30
+            timeoutSeconds: 20
+          livenessProbe:
+            exec:
+              command: ["rabbitmq-diagnostics", "-q", "ping"]
+            periodSeconds: 60
+            timeoutSeconds: 20
+            failureThreshold: 5
+          volumeMounts:
+            # Base Mnesia/Khepri, files durables et cookie Erlang : tout est sur le volume.
+            - name: data
+              mountPath: /var/lib/rabbitmq
+            - name: config
+              mountPath: /etc/rabbitmq/conf.d/20-lantern.conf
+              subPath: 20-lantern.conf
+              readOnly: true
+            - name: config
+              mountPath: /etc/rabbitmq/enabled_plugins
+              subPath: enabled_plugins
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: rabbitmq-config
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        # 3 copies Longhorn + Retain (voir platform/storage/longhorn-stateful.yaml).
+        storageClassName: longhorn-stateful
+        resources:
+          requests:
+            storage: 5Gi
