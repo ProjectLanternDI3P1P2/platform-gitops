@@ -12,20 +12,33 @@ Les deux applications Argo CD (`mongodb`, `rabbitmq`) sont générées par l'App
 
 - **Replica set MongoDB.** Leaderboard écrit avec `w: majority` + journal et se connecte avec
   `replicaSet=rs0` (ADR-0037 de `leaderboard-backend`) : un replica set est obligatoire, même
-  avec une seule instance. Le membre est déclaré sous son nom de Service, joignable depuis
-  tous les namespaces.
+  avec une seule instance. Le membre est déclaré sous le nom stable du pod
+  (`mongodb-0.mongodb-headless.mongodb.svc.cluster.local`), résolu depuis tous les namespaces.
+  Le changer après la mise en service demanderait un `rs.reconfig`.
+- **Accès réseau.** MongoDB n'accepte que le namespace `leaderboard` (NetworkPolicy
+  `mongodb-ingress`). RabbitMQ reste commun à tous les services : AMQP et métriques sont
+  ouverts au cluster, l'API de management seulement au namespace `rabbitmq`.
 - **Classe de stockage `longhorn-stateful`.** `longhorn-db` garde une seule copie parce que la
   redondance vient des 3 instances PostgreSQL. MongoDB et RabbitMQ n'ont qu'une instance :
   la redondance doit venir de Longhorn (3 copies). `Retain` protège contre une suppression
   accidentelle du PVC.
 - **Comptes MongoDB.** `leaderboard` n'a que `find` et `insert` sur `progression_lake`
-  (magasin en ajout seul). `leaderboard-migrator` crée la collection, son validateur et ses
-  index (`RawEventCollectionInitializer`).
+  (magasin en ajout seul). La collection `raw_events`, son validateur et ses index sont créés
+  par le Job `mongodb-bootstrap`, qui reprend `RawEventCollectionInitializer` : l'image de
+  Leaderboard ne l'exécute jamais (seuls les tests l'appellent). Une évolution du schéma
+  côté `leaderboard-backend` doit être reportée dans `bootstrap-job.yaml`.
+  `leaderboard-migrator` reste disponible pour les migrations futures.
 - **Topologie RabbitMQ.** Les applications déclarent elles-mêmes leurs exchanges et leurs
   files. Le Job `rabbitmq-provisioning` ajoute seulement les liaisons
   `<service>.events → progression.events`, reprises de `RabbitMq:Subscriptions` dans
   `leaderboard-backend`. Chaque producteur ne peut écrire que dans son propre exchange ;
-  seul `leaderboard` peut lire.
+  seul `leaderboard` peut lire. `leaderboard` a aussi `write` sur `amq.default` : sa file
+  `leaderboard.raw-events` rejette vers `leaderboard.raw-events.dead` par l'exchange par défaut,
+  et RabbitMQ refuse sinon de la déclarer.
+- **Futurs consommateurs.** La configuration de `player-backend` prévoit déjà une file
+  (`player.events.v1`, abonnement à `dungeon.events`, rejet vers `lantern.dead-letter`), mais
+  aucun code ne la consomme encore. Le jour où un producteur consomme, ajouter ses droits de
+  lecture dans `provisioning-job.yaml`.
 
 ## Secrets (jamais dans Git)
 
@@ -56,7 +69,9 @@ premier démarrage : les changer ensuite se fait à la main dans le serveur.
    pwsh -File .\_scripts\bootstrap-data-services-secrets.ps1 -KubeConfig '<kubeconfig>'
    ```
 
-3. Fusionner la pull request. La CI valide le rendu Kustomize.
+3. Fusionner la pull request. La CI valide le rendu Kustomize. Ne pas inverser avec
+   l'étape 2 : l'overlay de Leaderboard lit `leaderboard-mongodb` et `rabbitmq-credentials`,
+   et son pod ne démarre plus si ces Secrets manquent.
 4. `lantern-argocd-bootstrap` applique automatiquement le projet `lantern-apps` (nouvelles
    destinations) ; l'ApplicationSet crée ensuite les applications `mongodb` et `rabbitmq`.
 5. Synchroniser à la main `cluster-foundation` pour poser les labels Pod Security sur les
@@ -65,12 +80,13 @@ premier démarrage : les changer ensuite se fait à la main dans le serveur.
 
 ## Raccordement des producteurs
 
-À ajouter dans l'overlay de chaque producteur (`player`, `dungeon`, `combat`, `rewards`),
-par l'équipe propriétaire :
+Préparé sur la branche `feat/rabbitmq-producers` (une PR séparée, car chaque overlay a son
+CODEOWNER), avec `RabbitMq__Enabled` à `"false"` : l'équipe propriétaire n'a plus qu'à passer
+la valeur à `"true"`.
 
 ```yaml
 - name: RabbitMq__Enabled
-  value: "true"
+  value: "false"
 - name: RabbitMq__HostName
   value: rabbitmq.rabbitmq.svc.cluster.local
 - name: RabbitMq__UserName

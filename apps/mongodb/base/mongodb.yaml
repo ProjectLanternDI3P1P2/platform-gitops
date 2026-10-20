@@ -4,9 +4,12 @@
 # avec ?replicaSet=rs0, ce qui exige un replica set même avec une seule instance.
 # La redondance des données vient de Longhorn (3 copies, classe longhorn-stateful).
 #
-# Accès interne : mongodb.mongodb.svc.cluster.local:27017
-# Le membre du replica set est déclaré sous ce même nom (voir bootstrap-job.yaml), pour que
-# les pilotes des autres namespaces puissent le joindre après la découverte du replica set.
+# Accès interne : mongodb.mongodb.svc.cluster.local:27017 (adresse d'amorçage des clients).
+# Le membre du replica set est déclaré sous le nom stable du pod,
+# mongodb-0.mongodb-headless.mongodb.svc.cluster.local (voir bootstrap-job.yaml) : c'est
+# l'adresse que les pilotes utilisent après la découverte du replica set. Elle se résout
+# depuis tous les namespaces et ne dépend pas du passage du pod par l'IP de son propre Service.
+# Seul le namespace leaderboard peut joindre le port 27017 (voir network-policy.yaml).
 #
 # Secrets du namespace "mongodb", créés à la main (JAMAIS dans Git) par
 # _scripts/bootstrap-data-services-secrets.ps1 :
@@ -27,6 +30,24 @@ spec:
       port: 27017
       targetPort: mongodb
 ---
+# Service headless : nom DNS stable du pod, utilisé comme adresse du membre du replica set.
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongodb-headless
+  labels:
+    app.kubernetes.io/name: mongodb
+spec:
+  clusterIP: None
+  # Le nom du pod doit se résoudre avant qu'il soit prêt (initialisation du replica set).
+  publishNotReadyAddresses: true
+  selector:
+    app.kubernetes.io/name: mongodb
+  ports:
+    - name: mongodb
+      port: 27017
+      targetPort: mongodb
+---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -34,7 +55,7 @@ metadata:
   labels:
     app.kubernetes.io/name: mongodb
 spec:
-  serviceName: mongodb
+  serviceName: mongodb-headless
   replicas: 1
   selector:
     matchLabels:

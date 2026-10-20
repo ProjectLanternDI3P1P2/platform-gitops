@@ -4,3 +4,4 @@ kind: Kustomization
 resources:
   - mongodb.yaml
   - bootstrap-job.yaml
+  - network-policy.yaml

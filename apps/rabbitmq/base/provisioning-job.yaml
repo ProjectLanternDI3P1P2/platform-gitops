@@ -4,6 +4,9 @@
 #   - chaque producteur déclare son exchange "<service>.events" (topic, durable) ;
 #   - Leaderboard déclare son exchange "progression.events", sa file "leaderboard.raw-events",
 #     sa file de rejet "leaderboard.raw-events.dead" et lie sa file à progression.events ("#").
+#     Le rejet passe par l'exchange par défaut (x-dead-letter-exchange = "",
+#     RabbitMqRawEventConsumer) : RabbitMQ exige alors le droit write sur "amq.default"
+#     pour déclarer la file.
 #
 # Ce qui manque, et que ce Job crée : le routage des exchanges producteurs vers
 # progression.events. Les liaisons exchange -> exchange ci-dessous reprennent la liste
@@ -12,7 +15,8 @@
 #
 # Comptes (vhost "/", valeur par défaut des applications) :
 #   producteur <s>  configure/write sur "<s>.events" uniquement, aucune lecture
-#   leaderboard     seul consommateur : progression.events et les files "leaderboard.*"
+#   leaderboard     seul consommateur : progression.events et les files "leaderboard.*",
+#                   plus write sur amq.default (rejet vers sa file .dead)
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -21,6 +25,7 @@ data:
   VHOST: "/"
   CONSUMER: leaderboard
   CONSUMER_EXCHANGE: progression.events
+  CONSUMER_DEAD_LETTER_EXCHANGE: amq.default
   # Regex sans antislash : [.] = un point littéral.
   CONSUMER_QUEUE_PATTERN: "leaderboard[.].*"
   PRODUCERS: player dungeon combat rewards
@@ -78,7 +83,8 @@ data:
       user "$p" "$own" "$own" '^$'
     done
     consumer="^($(dot "$CONSUMER_EXCHANGE")|$CONSUMER_QUEUE_PATTERN)\$"
-    user "$CONSUMER" "$consumer" "$consumer" "$consumer"
+    consumer_write="^($(dot "$CONSUMER_EXCHANGE")|$CONSUMER_QUEUE_PATTERN|$(dot "$CONSUMER_DEAD_LETTER_EXCHANGE"))\$"
+    user "$CONSUMER" "$consumer" "$consumer_write" "$consumer"
 
     exchange "$CONSUMER_EXCHANGE"
     printf '%s\n' "$BINDINGS" | while read -r source key; do
