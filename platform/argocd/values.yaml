@@ -64,7 +64,7 @@ server:
     enabled: true
     ingressClassName: traefik
     hostname: groupe7.diiage.org
-    path: /
+    path: /argocd
     pathType: Prefix
     tls: true
     annotations:
