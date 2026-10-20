@@ -1,7 +1,7 @@
 # Desired configuration: provision Keycloak OIDC, its client Secret and TLS before sync.
 # This includes planned settings that are not yet active on the cluster.
 global:
-  domain: groupe7.diiage.org
+  domain: argocd.lantern.diiage
   nodeSelector:
     node-role.kubernetes.io/worker: worker
 
@@ -15,7 +15,7 @@ redis-ha:
 
 configs:
   cm:
-    url: https://groupe7.diiage.org/argocd
+    url: https://argocd.lantern.diiage
     admin.enabled: false
     exec.enabled: false
     oidc.config: |
@@ -35,6 +35,9 @@ configs:
     scopes: "[groups]"
     policy.csv: |
       g, /platform-ops, role:admin
+      p, role:developer, applications, get, */*, allow
+      p, role:developer, logs, get, */*, allow
+      g, /developers, role:developer
 
 controller:
   resources:
@@ -63,12 +66,12 @@ server:
   ingress:
     enabled: true
     ingressClassName: traefik
-    hostname: groupe7.diiage.org
-    path: /argocd
+    hostname: argocd.lantern.diiage
+    path: /
     pathType: Prefix
     tls: true
     annotations:
-      traefik.ingress.kubernetes.io/router.entrypoints: web
+      traefik.ingress.kubernetes.io/router.entrypoints: websecure
 
 applicationSet:
   replicas: 2
