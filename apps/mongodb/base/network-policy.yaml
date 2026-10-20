@@ -1,0 +1,23 @@
+# MongoDB n'est utilisé que par Leaderboard : seul son namespace peut joindre le port 27017.
+# Le namespace mongodb lui-même reste autorisé (Job mongodb-bootstrap, pod qui se joint
+# lui-même pendant l'initialisation du replica set).
+# kubectl exec et port-forward passent par le kubelet et ne sont pas filtrés.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: mongodb-ingress
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: mongodb
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: leaderboard
+        - podSelector: {}
+      ports:
+        - port: 27017
+          protocol: TCP

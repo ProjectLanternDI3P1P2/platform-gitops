@@ -12,3 +12,5 @@ resources:
   - leaderboard.yaml
   - frontend-game.yaml
   - database.yaml
+  - mongodb.yaml
+  - rabbitmq.yaml
