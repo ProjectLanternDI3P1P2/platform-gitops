@@ -66,8 +66,10 @@ premier démarrage : les changer ensuite se fait à la main dans le serveur.
 2. Créer les Secrets :
 
    ```powershell
-   pwsh -File .\_scripts\bootstrap-data-services-secrets.ps1 -KubeConfig '<kubeconfig>'
+   powershell -File .\_scripts\bootstrap-data-services-secrets.ps1 -KubeConfig '<kubeconfig>'
    ```
+
+   Fonctionne avec Windows PowerShell 5.1 (`powershell`) comme avec PowerShell 7 (`pwsh`).
 
 3. Fusionner la pull request. La CI valide le rendu Kustomize. Ne pas inverser avec
    l'étape 2 : l'overlay de Leaderboard lit `leaderboard-mongodb` et `rabbitmq-credentials`,

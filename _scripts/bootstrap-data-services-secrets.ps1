@@ -25,10 +25,16 @@ function ConvertFrom-Base64Utf8([string]$Value) {
 
 # 32 octets aléatoires en hexadécimal (64 caractères) : aucun caractère à échapper
 # dans une URI MongoDB ni dans le JSON de l'API RabbitMQ.
+# Compatible Windows PowerShell 5.1 et PowerShell 7.
+function New-RandomBytes([int]$Count) {
+    $bytes = New-Object byte[] $Count
+    $rng = [Security.Cryptography.RandomNumberGenerator]::Create()
+    try { $rng.GetBytes($bytes) } finally { $rng.Dispose() }
+    return ,$bytes
+}
+
 function New-RandomPassword {
-    $bytes = [byte[]]::new(32)
-    [Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
-    [Convert]::ToHexString($bytes).ToLowerInvariant()
+    -join ((New-RandomBytes 32) | ForEach-Object { $_.ToString('x2') })
 }
 
 function Invoke-KubectlJson([hashtable]$Manifest) {
@@ -42,7 +48,8 @@ function Get-SecretData([string]$Namespace, [string]$Name) {
     if ($LASTEXITCODE -ne 0) { throw "Could not inspect secret $Namespace/$Name." }
     if (-not $json) { return $null }
     $data = @{}
-    ($json | ConvertFrom-Json).data.PSObject.Properties | ForEach-Object {
+    # Windows PowerShell 5.1 reçoit la sortie de kubectl ligne par ligne.
+    (($json -join "`n") | ConvertFrom-Json).data.PSObject.Properties | ForEach-Object {
         $data[$_.Name] = ConvertFrom-Base64Utf8 $_.Value
     }
     return $data
@@ -74,9 +81,7 @@ foreach ($namespace in @('mongodb', 'rabbitmq')) {
 # --- MongoDB ---------------------------------------------------------------
 Initialize-Secret 'mongodb' 'mongodb-root' @{ username = 'root'; password = (New-RandomPassword) } 'kubernetes.io/basic-auth' | Out-Null
 
-$keyBytes = [byte[]]::new(756)
-[Security.Cryptography.RandomNumberGenerator]::Fill($keyBytes)
-Initialize-Secret 'mongodb' 'mongodb-keyfile' @{ keyfile = [Convert]::ToBase64String($keyBytes) } | Out-Null
+Initialize-Secret 'mongodb' 'mongodb-keyfile' @{ keyfile = [Convert]::ToBase64String((New-RandomBytes 756)) } | Out-Null
 
 $mongoUsers = Initialize-Secret 'mongodb' 'mongodb-users' @{
     'leaderboard' = (New-RandomPassword)
