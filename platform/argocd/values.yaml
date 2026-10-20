@@ -20,7 +20,7 @@ configs:
     exec.enabled: false
     oidc.config: |
       name: Keycloak
-      issuer: https://groupe7.diiage.org/auth/realms/ops
+      issuer: https://groupe7.diiage.org/auth/realms/master
       clientID: argocd
       clientSecret: $oidc.keycloak.clientSecret
       requestedScopes:
