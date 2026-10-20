@@ -31,3 +31,30 @@ spec:
                 name: player-api
                 port:
                   name: http
+                
+  # Exposition de l'API Player sur le domaine du projet de l'application front-end
+              
+    - host: groupe7.diiage.org
+      http:
+        paths:
+          - path: /api/v1/players
+            pathType: Prefix
+            backend:
+              service:
+                name: player-api
+                port:
+                  name: http
+          - path: /api/v1/hero-classes
+            pathType: Prefix
+            backend:
+              service:
+                name: player-api
+                port:
+                  name: http
+          - path: /hubs/player
+            pathType: Prefix
+            backend:
+              service:
+                name: player-api
+                port:
+                  name: http
