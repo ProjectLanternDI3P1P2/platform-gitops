@@ -20,7 +20,6 @@ database:
         cpu: 100m
         memory: 256Mi
   type: internal
-existingSecretAdminPassword: harbor-bootstrap
 existingSecretAdminPasswordKey: HARBOR_ADMIN_PASSWORD
 existingSecretSecretKey: harbor-bootstrap
 exporter:
@@ -36,18 +35,18 @@ exporter:
 expose:
   ingress:
     annotations:
-      traefik.ingress.kubernetes.io/router.entrypoints: websecure
+      traefik.ingress.kubernetes.io/router.entrypoints: web
       traefik.ingress.kubernetes.io/router.tls: "true"
     className: traefik
     hosts:
-      core: registry.lantern.diiage
+      core: groupe7.diiage.org
   tls:
     auto:
-      commonName: registry.lantern.diiage
+      commonName: groupe7.diiage.org
     certSource: auto
     enabled: true
   type: ingress
-externalURL: https://registry.lantern.diiage
+externalURL: https://groupe7.diiage.org/registry
 jobservice:
   nodeSelector:
     node-role.kubernetes.io/worker: worker
