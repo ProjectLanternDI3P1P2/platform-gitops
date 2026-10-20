@@ -20,7 +20,6 @@ database:
         cpu: 100m
         memory: 256Mi
   type: internal
-existingSecretAdminPassword: harbor-bootstrap
 existingSecretAdminPasswordKey: HARBOR_ADMIN_PASSWORD
 existingSecretSecretKey: harbor-bootstrap
 exporter:
