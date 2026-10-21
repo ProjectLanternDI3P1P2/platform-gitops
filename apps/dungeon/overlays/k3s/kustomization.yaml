@@ -13,6 +13,6 @@ patches:
   - path: settings.yaml
 
 images:
-  - name: groupe7.diiage.org:18443/lantern/backend
-    newName: groupe7.diiage.org:18443/lantern/dungeon-backend
+  - name: 10.4.111.200:18443/lantern/backend
+    newName: 10.4.111.200:18443/lantern/dungeon-backend
     newTag: v2.2.0
