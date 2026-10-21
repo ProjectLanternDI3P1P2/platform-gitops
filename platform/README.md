@@ -20,16 +20,12 @@ Helm-backed workloads are not adopted or restarted merely by registering their
 Application. A manual first sync transfers reconciliation to Argo CD; stop using
 Helm CLI upgrades for that release after adoption.
 
-## Branch review and main
+## Main branch bootstrap
 
-`bootstrap/argocd/review` registers the parent against the review branch and
-`overlays/platform-review` pins all child Git sources to that same branch. It
-allows review in Argo CD before merging the PR, without syncing workloads.
-These overlays intentionally refer to `refactor/unify-k3s-platform`.
-
-After merge, apply `bootstrap/argocd/platform`, then manually synchronize the
-parent. This switches its children to main. Remove the review overlays before
-deleting the review branch. The full K3s bootstrap also includes the same parent.
+`bootstrap/argocd/platform` registers the parent Application directly from the
+`main` branch. The full K3s bootstrap includes the same parent. Child
+Applications remain manually synchronized, so registering the parent does not
+adopt or restart the workloads by itself.
 
 ## Existing data and credentials
 
