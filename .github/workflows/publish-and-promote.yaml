@@ -73,7 +73,7 @@ jobs:
     if: ${{ always() && (needs.prebuild.result == 'success' || needs.prebuild.result == 'skipped') }}
     runs-on: lantern-k3s-builders
     env:
-      REGISTRY: registry.lantern.diiage
+      REGISTRY: 10.4.0.130:8444
       IMAGE: ${{ inputs.image }}
       APPLICATION: ${{ inputs.application }}
       GITOPS_REPOSITORY: ProjectLanternDI3P1P2/platform-gitops

@@ -79,10 +79,6 @@ template:
         name: ca-bundle
         readOnly: true
         subPath: ca-certificates.crt
-    hostAliases:
-    - hostnames:
-      - registry.lantern.diiage
-      ip: 10.43.236.141
     initContainers:
     - command:
       - /bin/sh
@@ -155,7 +151,7 @@ template:
         name: dind-sock
       - mountPath: /home/runner/externals
         name: dind-externals
-      - mountPath: /etc/docker/certs.d/registry.lantern.diiage/ca.crt
+      - mountPath: /etc/docker/certs.d/10.4.0.130:8444/ca.crt
         name: harbor-ca
         readOnly: true
         subPath: ca.crt

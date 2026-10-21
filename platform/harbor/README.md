@@ -1,8 +1,8 @@
 # Harbor registry on K3s
 
 Harbor is installed from the official `harbor/harbor` Helm chart `1.19.2`
-(Harbor `2.15.2`). It is exposed through Traefik at
-`https://registry.lantern.diiage` and uses the Longhorn StorageClass.
+(Harbor `2.15.2`). It is exposed directly through a Kubernetes NodePort and
+pfSense at `https://10.4.0.130:8444`; it uses the Longhorn StorageClass.
 
 - Developer onboarding: `DEVELOPER_GUIDE.md`
 - Firewall/NAT preparation: `NAT_EXPOSURE.md`
@@ -46,23 +46,14 @@ not configure clients with global TLS verification disabled.
 
 ## Network and certificate access
 
-Harbor access is expected to pass through the pfSense TCP `443` NAT rule. No
-DNS record is required. Each approved workstation and self-hosted CI runner
-must map the configured pfSense NAT address locally while retaining the Harbor
-hostname:
-
-```text
-<PFSENSE_NAT_IP> registry.lantern.diiage
-```
-
-See `NAT_EXPOSURE.md` for the pfSense fields and the Windows/Linux hosts-file
-locations. Do not use the pfSense or worker IP as the Docker registry name;
-Harbor's certificate and token service require `registry.lantern.diiage`.
+Harbor access passes through the pfSense TCP `8444` NAT rule to NodePort
+`30444`. No Ingress, DNS record or hosts-file entry is required. See
+`NAT_EXPOSURE.md` for the pfSense fields and the required NAT-reflection check.
 
 Export the public Harbor CA without exporting any private key:
 
 ```powershell
-$encoded = kubectl -n harbor get secret harbor-ingress `
+$encoded = kubectl -n harbor get secret harbor-nginx `
   -o jsonpath='{.data.ca\.crt}'
 [IO.File]::WriteAllBytes(
   "$env:USERPROFILE\.kube\harbor-ca.crt",
@@ -77,7 +68,7 @@ images from Harbor.
 ## Verification
 
 ```powershell
-kubectl -n harbor get pods,pvc,ingress
+kubectl -n harbor get pods,pvc,svc
 kubectl -n harbor rollout status deployment/harbor-core --timeout=300s
 kubectl -n harbor rollout status deployment/harbor-portal --timeout=300s
 kubectl -n harbor rollout status deployment/harbor-registry --timeout=300s

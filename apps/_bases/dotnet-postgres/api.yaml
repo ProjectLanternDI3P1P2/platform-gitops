@@ -37,7 +37,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: api
-          image: registry.lantern.diiage/lantern/backend:dev-bootstrap
+          image: 10.4.0.130:8444/lantern/backend:dev-bootstrap
           imagePullPolicy: Always
           ports:
             - name: http

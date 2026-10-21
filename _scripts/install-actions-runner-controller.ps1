@@ -32,10 +32,10 @@ if ($LASTEXITCODE -ne 0) {
     throw 'Failed to apply ARC namespaces and network policy.'
 }
 
-$caValue = & kubectl --kubeconfig $KubeConfig -n harbor get secret harbor-ingress `
+$caValue = & kubectl --kubeconfig $KubeConfig -n harbor get secret harbor-nginx `
     -o 'jsonpath={.data.ca\.crt}'
 if ($LASTEXITCODE -ne 0 -or -not $caValue) {
-    throw 'Could not read the public Harbor CA from secret harbor/harbor-ingress.'
+    throw 'Could not read the public Harbor CA from secret harbor/harbor-nginx.'
 }
 
 $temporaryCa = Join-Path ([IO.Path]::GetTempPath()) "lantern-harbor-ca-$([Guid]::NewGuid()).crt"
