@@ -1,6 +1,9 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
+components:
+  - ../../../_components/database-migrations
+
 namespace: rewards
 namePrefix: rewards-
 
@@ -14,3 +17,51 @@ images:
   - name: 10.4.111.200:18443/lantern/backend
     newName: 10.4.111.200:18443/lantern/reward-backend
     newTag: dev-latest
+
+# Run after this overlay's patches so the migration targets the same schema.
+replacements:
+  - source:
+      kind: Deployment
+      fieldPath: spec.template.spec.containers.0.image
+    targets:
+      - select:
+          kind: Job
+          name: database-migrate
+        fieldPaths:
+          - spec.template.spec.containers.0.image
+  - source:
+      kind: Deployment
+      fieldPath: spec.template.spec.containers.0.env.[name=ConnectionStrings__DefaultConnection].value
+    targets:
+      - select:
+          kind: Job
+          name: database-migrate
+        fieldPaths:
+          - spec.template.spec.containers.0.env.[name=ConnectionStrings__DefaultConnection].value
+  - source:
+      kind: Deployment
+      fieldPath: spec.template.spec.containers.0.env.[name=ConnectionStrings__PasswordFile].value
+    targets:
+      - select:
+          kind: Job
+          name: database-migrate
+        fieldPaths:
+          - spec.template.spec.containers.0.env.[name=ConnectionStrings__PasswordFile].value
+  - source:
+      kind: Deployment
+      fieldPath: spec.template.spec.volumes.[name=db-secret].secret.secretName
+    targets:
+      - select:
+          kind: Job
+          name: database-migrate
+        fieldPaths:
+          - spec.template.spec.volumes.[name=db-secret].secret.secretName
+  - source:
+      kind: Deployment
+      fieldPath: spec.template.spec.imagePullSecrets
+    targets:
+      - select:
+          kind: Job
+          name: database-migrate
+        fieldPaths:
+          - spec.template.spec.imagePullSecrets

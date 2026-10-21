@@ -32,6 +32,9 @@ jobs:
         run: |
           set -euo pipefail
           while IFS= read -r file; do
+            if grep -Eq '^kind: Component\s*$' "$file"; then
+              continue
+            fi
             kubectl kustomize "$(dirname "$file")" >/dev/null
           done < <(find . -type f \( -name kustomization.yaml -o -name kustomization.yml \) -not -path './.git/*')
 
@@ -58,3 +61,8 @@ jobs:
           helm template lantern-k3s-builders oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set \
             --version 0.14.2 -n arc-runners --skip-crds \
             -f platform/actions-runner-controller/runners/values.yaml >/dev/null
+
+      - name: Validate migration jobs and image promotion
+        run: |
+          python3 -m pip install --only-binary :all: --disable-pip-version-check PyYAML==6.0.2
+          python3 .github/scripts/validate-migration-jobs.py
