@@ -5,8 +5,12 @@
 | MongoDB 7.0, replica set `rs0` à un membre | `mongodb` | `mongodb.mongodb.svc.cluster.local:27017` | 10 Gi, `longhorn-stateful` |
 | RabbitMQ 4.1 | `rabbitmq` | `rabbitmq.rabbitmq.svc.cluster.local:5672` (AMQP) | 5 Gi, `longhorn-stateful` |
 
-Les deux applications Argo CD (`mongodb`, `rabbitmq`) sont générées par l'ApplicationSet
-`lantern-apps` à partir de `apps/<nom>/overlays/k3s`.
+- `mongodb` (réservé à Leaderboard) est une application du projet `lantern-apps`, générée par
+  l'ApplicationSet à partir de `apps/mongodb/overlays/k3s`.
+- `rabbitmq` (commun à tous les microservices) est un composant de plateforme : application
+  `rabbitmq` du projet `lantern-platform-k3s`, déclarée dans
+  `platform/argocd/applications/rabbitmq.yaml` et rendue depuis `platform/rabbitmq`.
+  Comme le reste de la plateforme, elle se synchronise à la main.
 
 ## Choix
 
@@ -74,11 +78,14 @@ premier démarrage : les changer ensuite se fait à la main dans le serveur.
 3. Fusionner la pull request. La CI valide le rendu Kustomize. Ne pas inverser avec
    l'étape 2 : l'overlay de Leaderboard lit `leaderboard-mongodb` et `rabbitmq-credentials`,
    et son pod ne démarre plus si ces Secrets manquent.
-4. `lantern-argocd-bootstrap` applique automatiquement le projet `lantern-apps` (nouvelles
-   destinations) ; l'ApplicationSet crée ensuite les applications `mongodb` et `rabbitmq`.
-5. Synchroniser à la main `cluster-foundation` pour poser les labels Pod Security sur les
-   deux nouveaux namespaces (synchronisation manuelle par conception).
-6. Vérifier que les Jobs `mongodb-bootstrap` et `rabbitmq-provisioning` sont `Complete`.
+4. `lantern-argocd-bootstrap` applique automatiquement les projets `lantern-apps` et
+   `lantern-platform-k3s` (nouvelles destinations) ; l'ApplicationSet crée l'application
+   `mongodb` et le parent `platform` déclare l'application `rabbitmq`.
+5. Synchroniser à la main `cluster-foundation` pour créer les deux namespaces et poser leurs
+   labels Pod Security (synchronisation manuelle par conception). `rabbitmq` ne crée pas son
+   namespace (`CreateNamespace=false`).
+6. Synchroniser à la main `platform`, puis l'application `rabbitmq`.
+7. Vérifier que les Jobs `mongodb-bootstrap` et `rabbitmq-provisioning` sont `Complete`.
 
 ## Raccordement des producteurs
 

@@ -1,0 +1,18 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: rabbitmq
+  namespace: argocd
+spec:
+  project: lantern-platform-k3s
+  source:
+    repoURL: https://github.com/ProjectLanternDI3P1P2/platform-gitops.git
+    targetRevision: main
+    path: platform/rabbitmq
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: rabbitmq
+  syncPolicy:
+    # Manual synchronization, like the other platform components.
+    # The namespace is owned by cluster-foundation (Pod Security labels).
+    syncOptions: [CreateNamespace=false]
