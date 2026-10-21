@@ -15,7 +15,7 @@ redis-ha:
 
 configs:
   cm:
-    url: https://10.4.0.130:8443
+    url: https://192.214.203.200:8443
     admin.enabled: false
     exec.enabled: false
     oidc.config: |
