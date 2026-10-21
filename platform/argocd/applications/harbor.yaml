@@ -37,6 +37,10 @@ spec:
     repoURL: https://github.com/ProjectLanternDI3P1P2/platform-gitops.git
     targetRevision: main
   syncPolicy:
+    automated:
+      enabled: true
+      prune: false
+      selfHeal: true
     syncOptions:
     - CreateNamespace=false
     - RespectIgnoreDifferences=true
