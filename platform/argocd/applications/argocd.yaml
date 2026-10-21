@@ -9,27 +9,36 @@ spec:
   destination:
     namespace: argocd
     server: https://kubernetes.default.svc
+
   ignoreDifferences:
-  - group: ""
-    jsonPointers:
-    - /data
-    - /stringData
-    kind: Secret
+    - group: ""
+      jsonPointers:
+        - /data
+        - /stringData
+      kind: Secret
+
   project: lantern-platform-k3s
+
   sources:
-  - chart: argo-cd
-    helm:
-      releaseName: argocd
-      skipCrds: true
-      valueFiles:
-      - $values/platform/argocd/values.yaml
-    repoURL: https://argoproj.github.io/argo-helm
-    targetRevision: 10.9.2
-  - ref: values
-    repoURL: https://github.com/ProjectLanternDI3P1P2/platform-gitops.git
-    targetRevision: main
+    - chart: argo-cd
+      helm:
+        releaseName: argocd
+        skipCrds: true
+        valueFiles:
+          - $values/platform/argocd/values.yaml
+      repoURL: https://argoproj.github.io/argo-helm
+      targetRevision: 10.9.2
+
+    - ref: values
+      repoURL: https://github.com/ProjectLanternDI3P1P2/platform-gitops.git
+      targetRevision: main
+
   syncPolicy:
+    automated:
+      enabled: true
+      prune: true
+      selfHeal: true
     syncOptions:
-    - CreateNamespace=false
-    - RespectIgnoreDifferences=true
-    - FailOnSharedResource=true
+      - CreateNamespace=false
+      - RespectIgnoreDifferences=true
+      - FailOnSharedResource=true
