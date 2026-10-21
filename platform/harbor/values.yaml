@@ -44,11 +44,14 @@ expose:
         nodePort: 30444
   tls:
     auto:
-      commonName: 10.4.0.130
+      commonName: 192.214.203.200
     certSource: auto
     enabled: true
   type: nodePort
-externalURL: https://10.4.0.130:8444
+externalURL: https://192.214.203.200:18443
+nginx:
+  nodeSelector:
+    node-role.kubernetes.io/worker: worker
 jobservice:
   nodeSelector:
     node-role.kubernetes.io/worker: worker
