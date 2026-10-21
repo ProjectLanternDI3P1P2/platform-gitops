@@ -1,6 +1,6 @@
 # Platform
 
-The Argo CD `platform` Application groups eight child Applications:
+The Argo CD `platform` Application groups nine child Applications:
 
 | Application | Source | Destination | Adoption |
 | --- | --- | --- | --- |
@@ -12,6 +12,7 @@ The Argo CD `platform` Application groups eight child Applications:
 | alloy | alloy 1.13.0 | monitoring | Existing Helm release; manual sync |
 | longhorn | longhorn 1.12.1 | longhorn-system | Existing Helm release; manual sync |
 | traefik | platform/traefik/k3s | kube-system | HelmChartConfig only; K3s owns the workloads |
+| rabbitmq | platform/rabbitmq | rabbitmq | Shared message broker; manual sync ([details](../_docs/technical/mongodb-rabbitmq.md)) |
 
 Use the `lantern-platform-k3s` project filter in Argo CD. Open `platform` to
 see child Applications, then open a child to inspect its resources and diff.

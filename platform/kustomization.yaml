@@ -9,3 +9,4 @@ resources:
   - argocd/applications/longhorn.yaml
   - argocd/applications/alloy.yaml
   - argocd/applications/traefik.yaml
+  - argocd/applications/rabbitmq.yaml
