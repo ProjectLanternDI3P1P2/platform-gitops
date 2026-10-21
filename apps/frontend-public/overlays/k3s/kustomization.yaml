@@ -8,5 +8,5 @@ resources:
   - ingress.yaml
 
 images:
-  - name: 10.4.0.130:8444/lantern/frontend-public
+  - name: 192.214.203.200:18443/lantern/frontend-public
     newTag: dev-latest

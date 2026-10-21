@@ -35,7 +35,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: frontend-public
-          image: 10.4.0.130:8444/lantern/frontend-public:dev-bootsrap
+          image: 192.214.203.200:18443/lantern/frontend-public:dev-bootsrap
           imagePullPolicy: Always
           ports:
             - name: http

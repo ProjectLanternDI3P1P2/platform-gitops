@@ -151,7 +151,7 @@ template:
         name: dind-sock
       - mountPath: /home/runner/externals
         name: dind-externals
-      - mountPath: /etc/docker/certs.d/10.4.0.130:8444/ca.crt
+      - mountPath: /etc/docker/certs.d/192.214.203.200:18443/ca.crt
         name: harbor-ca
         readOnly: true
         subPath: ca.crt
