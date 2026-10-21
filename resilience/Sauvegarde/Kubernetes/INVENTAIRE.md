@@ -43,13 +43,3 @@ Un stockage indépendant, privé et sécurisé reste à mettre en place.
 Ces archives sont des instantanés du dépôt GitOps. Elles ne contiennent pas nécessairement tous les objets du cluster et ne remplacent pas les sauvegardes des Secrets, des données PostgreSQL, des volumes Longhorn ou d'etcd.
 
 Les archives ne doivent pas être publiées dans un dépôt public sans audit de leur contenu.
-
-## État
-
-- [x] Identification des manifests et des branches Git.
-- [x] Création des quatre archives.
-- [x] Contrôle de lisibilité après transfert.
-- [x] Calcul des empreintes SHA-256.
-- [ ] Stockage sécurisé et indépendant.
-- [ ] Vérification des ressources Kubernetes non présentes dans Git.
-- [ ] Test de restauration.
