@@ -5,7 +5,6 @@ DNS already resolves `groupe7.diiage.org` to `192.214.203.200`.
 
 | Public URL | HAProxy backend | Kubernetes TLS endpoint |
 | --- | --- | --- |
-
 | `https://groupe7.diiage.org:18443` | `lantern-harbor` | `192.168.0.11:30444` |
 
 Keep the existing frontend on port 443, including the website and Keycloak
@@ -35,7 +34,7 @@ Disable the old public Argo CD NAT/frontend.
    Keep the old rule definitions for rollback. Apply the HAProxy configuration.
 5. Confirm access from the workstation and from the cluster/ARC network. If
    the public IP is not reachable internally, use split DNS pointing the same
-   domain to a pfSense address on which the Harbor frontend also listen. Do not
+   domain to a pfSense address on which the Harbor frontend also listens. Do not
    point the domain directly to a worker, whose Harbor port is 30444.
 
 The TLS certificate presented to public clients comes from HAProxy. Harbor's
