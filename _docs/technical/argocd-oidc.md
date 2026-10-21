@@ -1,18 +1,19 @@
 # Argo CD target configuration
 
 `platform/argocd/values.yaml` is the desired configuration, not a snapshot of
-the running release. It retains the previously planned Keycloak OIDC, RBAC,
-HTTPS ingress, Redis HA, autoscaling, resource limits and two ApplicationSet
-replicas. Worker placement from the running installation is retained.
+the running release. It retains the planned Keycloak OIDC, RBAC, direct HTTPS
+NodePort exposure, Redis HA, autoscaling, resource limits and two
+ApplicationSet replicas. Worker placement from the running installation is
+retained.
 
 ## Prerequisites before synchronization
 
-1. Provide trusted HTTPS for `auth.lantern.diiage` and `argocd.lantern.diiage`.
-   Replace `REPLACE_CLUSTER_ISSUER` with the actual certificate issuer. The
-   current private HTTP endpoints do not satisfy this target configuration.
-2. Recreate realm `lantern` in Keycloak after its reset. Register confidential
-   client `argocd` with redirect URI
-   `https://argocd.lantern.diiage/auth/callback` and the matching web origin.
+1. Keep Keycloak reachable over trusted HTTPS at
+   `https://groupe7.diiage.org/auth`. The Argo CD issuer is the realm-specific
+   discovery root `https://groupe7.diiage.org/auth/realms/master`.
+2. Register confidential client `argocd` in realm `master` with redirect URI
+   `https://10.4.0.130:8443/auth/callback` and web origin
+   `https://10.4.0.130:8443`.
 3. Supply the matching client secret in `argocd/argocd-secret` under key
    `oidc.keycloak.clientSecret`, using the existing secret-management mechanism.
    The values file contains only its Argo CD reference. No secret belongs in Git.
@@ -25,5 +26,6 @@ replicas. Worker placement from the running installation is retained.
    `configs.cm.admin.enabled: false`. Keep the existing recovery access until
    that validation succeeds. Review the first sync without pruning.
 
-Restoring this source configuration does not provision TLS, create the realm,
-write the client secret, disable the live administrator, or validate SSO.
+Restoring this source configuration does not provision the Argo CD TLS
+certificate, create the Keycloak client, write its secret, disable the live
+administrator, or validate SSO.

@@ -1,7 +1,7 @@
 # Desired configuration: provision Keycloak OIDC, its client Secret and TLS before sync.
 # This includes planned settings that are not yet active on the cluster.
 global:
-  domain: argocd.lantern.diiage
+  domain: 10.4.0.130
   nodeSelector:
     node-role.kubernetes.io/worker: worker
 
@@ -15,7 +15,7 @@ redis-ha:
 
 configs:
   cm:
-    url: https://argocd.lantern.diiage
+    url: https://10.4.0.130:8443
     admin.enabled: false
     exec.enabled: false
     oidc.config: |
@@ -29,7 +29,9 @@ configs:
         - email
         - groups
   params:
-    server.insecure: true
+    # Argo CD terminates TLS itself because this endpoint is exposed directly
+    # through a pfSense port forward, without an Ingress controller.
+    server.insecure: false
   rbac:
     policy.default: ""
     scopes: "[groups]"
@@ -64,14 +66,15 @@ server:
     requests: {cpu: 100m, memory: 256Mi}
     limits: {cpu: "1", memory: 1Gi}
   ingress:
-    enabled: true
-    ingressClassName: traefik
-    hostname: argocd.lantern.diiage
-    path: /
-    pathType: Prefix
-    tls: true
-    annotations:
-      traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    enabled: false
+  service:
+    type: NodePort
+    # pfSense forwards the approved external TCP port to this port on a K3s
+    # worker. The HTTP-labelled service port also carries TLS while
+    # server.insecure is false and must not be published by pfSense.
+    nodePortHttp: 30080
+    nodePortHttps: 30443
+    externalTrafficPolicy: Cluster
 
 applicationSet:
   replicas: 2
