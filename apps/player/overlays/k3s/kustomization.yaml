@@ -18,6 +18,6 @@ patches:
 
 # Déployer une nouvelle version = changer le tag. Toujours un tag fixe (vX.Y.Z), jamais "latest".
 images:
-  - name: registry.lantern.diiage/lantern/player-backend
+  - name: 10.4.0.130:8444/lantern/player-backend
     newName: diiageplayerimage/player-image
     newTag: v1.3.0

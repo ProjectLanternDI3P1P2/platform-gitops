@@ -33,20 +33,22 @@ exporter:
       cpu: 20m
       memory: 64Mi
 expose:
-  ingress:
-    annotations:
-      traefik.ingress.kubernetes.io/router.entrypoints: websecure
-      traefik.ingress.kubernetes.io/router.tls: "true"
-    className: traefik
-    hosts:
-      core: registry.lantern.diiage
+  nodePort:
+    name: harbor
+    ports:
+      http:
+        port: 80
+        nodePort: 30082
+      https:
+        port: 443
+        nodePort: 30444
   tls:
     auto:
-      commonName: registry.lantern.diiage
+      commonName: 10.4.0.130
     certSource: auto
     enabled: true
-  type: ingress
-externalURL: https://registry.lantern.diiage
+  type: nodePort
+externalURL: https://10.4.0.130:8444
 jobservice:
   nodeSelector:
     node-role.kubernetes.io/worker: worker

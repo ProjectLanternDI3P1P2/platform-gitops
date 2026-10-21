@@ -4,7 +4,7 @@ The Lantern platform provides an internal Harbor registry for application
 images:
 
 ```text
-https://registry.lantern.diiage
+https://10.4.0.130:8444
 ```
 
 Harbor is currently intended for trusted private networks, CI runners and
@@ -14,8 +14,7 @@ K3s nodes. It is not a public Internet registry.
 
 Before logging in, a workstation must:
 
-1. map `registry.lantern.diiage` to the approved pfSense NAT address in its
-   local hosts file;
+1. reach `10.4.0.130:8444` through the approved pfSense rule;
 2. trust the Harbor CA supplied by the platform team;
 3. have Docker, Podman or another OCI-compatible client installed;
 4. have a named Harbor account or a scoped robot-account credential.
@@ -24,15 +23,8 @@ Do not use the Harbor `admin` account for application builds or CI. Do not
 disable TLS verification globally and do not commit registry passwords, robot
 tokens or Docker authentication files.
 
-The platform team will provide the value to use in the local hosts file:
-
-```text
-<PFSENSE_NAT_IP> registry.lantern.diiage
-```
-
-On Windows the file is `C:\Windows\System32\drivers\etc\hosts`; on Linux it is
-`/etc/hosts`. This entry preserves the Harbor hostname while pfSense forwards
-TCP port `443` to the Kubernetes ingress.
+No local hosts-file entry is required. The registry address includes the
+nonstandard port and must be used exactly as documented.
 
 ## Image naming convention
 
@@ -40,15 +32,15 @@ Application images use the shared private `lantern` project and an immutable
 tag:
 
 ```text
-registry.lantern.diiage/lantern/<service>:<git-sha>
+10.4.0.130:8444/lantern/<service>:<git-sha>
 ```
 
 Examples:
 
 ```text
-registry.lantern.diiage/lantern/player:47e129f
-registry.lantern.diiage/lantern/combat:a12bc34
-registry.lantern.diiage/lantern/frontend-game:2026.10.01-7f31d9a
+10.4.0.130:8444/lantern/player:47e129f
+10.4.0.130:8444/lantern/combat:a12bc34
+10.4.0.130:8444/lantern/frontend-game:2026.10.01-7f31d9a
 ```
 
 Do not deploy `latest`. A release tag may be added for human readability, but
@@ -59,14 +51,14 @@ Kubernetes manifests should ultimately pin the image digest.
 Use an individual account for interactive work:
 
 ```powershell
-docker login registry.lantern.diiage
+docker login 10.4.0.130:8444
 ```
 
 For CI, pass the robot-account token through the CI secret store and use
 password stdin:
 
 ```powershell
-$env:HARBOR_TOKEN | docker login registry.lantern.diiage `
+$env:HARBOR_TOKEN | docker login 10.4.0.130:8444 `
   --username $env:HARBOR_USERNAME `
   --password-stdin
 ```
@@ -80,7 +72,7 @@ From a service repository:
 ```powershell
 $service = "player"
 $tag = (git rev-parse --short=7 HEAD)
-$image = "registry.lantern.diiage/lantern/${service}:${tag}"
+$image = "10.4.0.130:8444/lantern/${service}:${tag}"
 
 docker build --pull --tag $image .
 docker push $image
@@ -116,7 +108,7 @@ When reporting a registry problem, provide:
 - the repository and immutable tag or digest;
 - the time of the failed operation;
 - the HTTP status or client error;
-- whether the hosts-file mapping, NAT connection and CA trust succeed.
+- whether the NAT connection and CA trust succeed.
 
 Never include passwords, robot tokens, Docker `config.json` contents or the
 Harbor bootstrap Secret.

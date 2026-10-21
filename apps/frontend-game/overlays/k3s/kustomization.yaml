@@ -12,5 +12,5 @@ patches:
 
 # The promotion workflow replaces this bootstrap tag with main-<sha12>.
 images:
-  - name: registry.lantern.diiage/lantern/frontend-game
+  - name: 10.4.0.130:8444/lantern/frontend-game
     newTag: dev-latest

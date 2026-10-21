@@ -2,7 +2,7 @@
 
 Harbor is now available on the Lantern Kubernetes platform at:
 
-**https://registry.lantern.diiage**
+**https://10.4.0.130:8444**
 
 The registry provides private OCI image storage, immutable image references and
 Trivy vulnerability scanning. It is backed by replicated Longhorn volumes and
@@ -10,15 +10,14 @@ is currently restricted to trusted private, CI and cluster networks.
 
 Before using it, developers must obtain:
 
-- access to the pfSense NAT endpoint and the hosts-file entry supplied by the
-  platform team for `registry.lantern.diiage`;
+- access to `10.4.0.130:8444` through the pfSense NAT rule;
 - the Harbor CA certificate from the platform team;
 - an individual Harbor account or a scoped robot account for CI.
 
 Please use the following image naming convention:
 
 ```text
-registry.lantern.diiage/lantern/<service>:<git-sha>
+10.4.0.130:8444/lantern/<service>:<git-sha>
 ```
 
 Do not use the `latest` tag, do not use the administrator account for builds,

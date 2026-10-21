@@ -56,7 +56,7 @@ trusts the mounted Harbor CA:
 The target image is:
 
 ```text
-registry.lantern.diiage/lantern/<service>:<immutable-tag>
+10.4.0.130:8444/lantern/<service>:<immutable-tag>
 ```
 
 Harbor credentials belong in protected GitHub environment or repository

@@ -11,6 +11,6 @@ patches:
   - path: settings.yaml
 
 images:
-  - name: registry.lantern.diiage/lantern/backend
-    newName: registry.lantern.diiage/lantern/reward-backend
+  - name: 10.4.0.130:8444/lantern/backend
+    newName: 10.4.0.130:8444/lantern/reward-backend
     newTag: dev-latest
