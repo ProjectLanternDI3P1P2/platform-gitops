@@ -12,6 +12,9 @@ redis:
   enabled: false
 redis-ha:
   enabled: true
+  image:
+    repository: docker.io/library/redis
+    tag: 8.6.4-alpine
 
 configs:
   cm:
