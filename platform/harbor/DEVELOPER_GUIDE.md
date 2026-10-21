@@ -4,7 +4,7 @@ The Lantern platform provides an internal Harbor registry for application
 images:
 
 ```text
-https://10.4.0.130:8444
+https://groupe7.diiage.org:18443
 ```
 
 Harbor is currently intended for trusted private networks, CI runners and
@@ -14,8 +14,8 @@ K3s nodes. It is not a public Internet registry.
 
 Before logging in, a workstation must:
 
-1. reach `10.4.0.130:8444` through the approved pfSense rule;
-2. trust the Harbor CA supplied by the platform team;
+1. reach `groupe7.diiage.org:18443` through the approved pfSense rule;
+2. trust the domain certificate chain served by HAProxy;
 3. have Docker, Podman or another OCI-compatible client installed;
 4. have a named Harbor account or a scoped robot-account credential.
 
@@ -32,15 +32,15 @@ Application images use the shared private `lantern` project and an immutable
 tag:
 
 ```text
-10.4.0.130:8444/lantern/<service>:<git-sha>
+groupe7.diiage.org:18443/lantern/<service>:<git-sha>
 ```
 
 Examples:
 
 ```text
-10.4.0.130:8444/lantern/player:47e129f
-10.4.0.130:8444/lantern/combat:a12bc34
-10.4.0.130:8444/lantern/frontend-game:2026.10.01-7f31d9a
+groupe7.diiage.org:18443/lantern/player:47e129f
+groupe7.diiage.org:18443/lantern/combat:a12bc34
+groupe7.diiage.org:18443/lantern/frontend-game:2026.10.01-7f31d9a
 ```
 
 Do not deploy `latest`. A release tag may be added for human readability, but
@@ -51,14 +51,14 @@ Kubernetes manifests should ultimately pin the image digest.
 Use an individual account for interactive work:
 
 ```powershell
-docker login 10.4.0.130:8444
+docker login groupe7.diiage.org:18443
 ```
 
 For CI, pass the robot-account token through the CI secret store and use
 password stdin:
 
 ```powershell
-$env:HARBOR_TOKEN | docker login 10.4.0.130:8444 `
+$env:HARBOR_TOKEN | docker login groupe7.diiage.org:18443 `
   --username $env:HARBOR_USERNAME `
   --password-stdin
 ```
@@ -72,7 +72,7 @@ From a service repository:
 ```powershell
 $service = "player"
 $tag = (git rev-parse --short=7 HEAD)
-$image = "10.4.0.130:8444/lantern/${service}:${tag}"
+$image = "groupe7.diiage.org:18443/lantern/${service}:${tag}"
 
 docker build --pull --tag $image .
 docker push $image
