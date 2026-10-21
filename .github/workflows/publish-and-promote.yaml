@@ -73,7 +73,7 @@ jobs:
     if: ${{ always() && (needs.prebuild.result == 'success' || needs.prebuild.result == 'skipped') }}
     runs-on: lantern-k3s-builders
     env:
-      REGISTRY: 10.4.0.130:8444
+      REGISTRY: 192.214.203.200:18443
       IMAGE: ${{ inputs.image }}
       APPLICATION: ${{ inputs.application }}
       GITOPS_REPOSITORY: ProjectLanternDI3P1P2/platform-gitops
@@ -88,6 +88,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          if [[ "${IMAGE}" != "${REGISTRY}/lantern/"* ]]; then
+            echo "Image must use ${REGISTRY}/lantern/" >&2
+            exit 1
+          fi
           short_sha="$(git rev-parse --short=12 HEAD)"
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
             deploy_tag="${GITHUB_REF_NAME}"

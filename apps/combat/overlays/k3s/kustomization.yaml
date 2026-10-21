@@ -11,6 +11,6 @@ patches:
   - path: settings.yaml
 
 images:
-  - name: 10.4.0.130:8444/lantern/backend
-    newName: 10.4.0.130:8444/lantern/combat-backend
+  - name: 192.214.203.200:18443/lantern/backend
+    newName: 192.214.203.200:18443/lantern/combat-backend
     newTag: dev-8a5a02494141

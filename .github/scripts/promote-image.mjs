@@ -2,31 +2,31 @@ import { readFile, writeFile } from "node:fs/promises";
 
 const applications = {
   combat: {
-    image: "10.4.0.130:8444/lantern/combat-backend",
+    image: "192.214.203.200:18443/lantern/combat-backend",
     repository: "ProjectLanternDI3P1P2/combat-backend",
   },
   dungeon: {
-    image: "10.4.0.130:8444/lantern/dungeon-backend",
+    image: "192.214.203.200:18443/lantern/dungeon-backend",
     repository: "ProjectLanternDI3P1P2/dungeon-backend",
   },
   "frontend-game": {
-    image: "10.4.0.130:8444/lantern/frontend-game",
+    image: "192.214.203.200:18443/lantern/frontend-game",
     repository: "ProjectLanternDI3P1P2/frontend-game",
   },
   "frontend-public": {
-    image: "10.4.0.130:8444/lantern/frontend-public",
+    image: "192.214.203.200:18443/lantern/frontend-public",
     repository: "ProjectLanternDI3P1P2/frontend-public",
   },
   player: {
-    image: "10.4.0.130:8444/lantern/player-backend",
+    image: "192.214.203.200:18443/lantern/player-backend",
     repository: "ProjectLanternDI3P1P2/player-backend",
   },
   leaderboard: {
-    image: "10.4.0.130:8444/lantern/leaderboard-backend",
+    image: "192.214.203.200:18443/lantern/leaderboard-backend",
     repository: "ProjectLanternDI3P1P2/leaderboard-backend",
   },
   rewards: {
-    image: "10.4.0.130:8444/lantern/reward-backend",
+    image: "192.214.203.200:18443/lantern/reward-backend",
     repository: "ProjectLanternDI3P1P2/reward-backend",
   },
 };

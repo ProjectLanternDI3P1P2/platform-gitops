@@ -10,14 +10,11 @@ resources:
 patches:
   # Origines CORS autorisées (le front).
   - path: cors.yaml
-  # Temporaire : image sur Docker Hub (voir dockerhub-image.yaml).
-  - path: dockerhub-image.yaml
 
   # Base PostgreSQL partagée (ADR-005).
   - path: shared-database.yaml
 
 # Déployer une nouvelle version = changer le tag. Toujours un tag fixe (vX.Y.Z), jamais "latest".
 images:
-  - name: 10.4.0.130:8444/lantern/player-backend
-    newName: diiageplayerimage/player-image
+  - name: 192.214.203.200:18443/lantern/player-backend
     newTag: v1.3.0

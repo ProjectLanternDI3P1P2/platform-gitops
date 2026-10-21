@@ -13,6 +13,6 @@ patches:
   - path: data-services.yaml
 
 images:
-  - name: 10.4.0.130:8444/lantern/backend
-    newName: 10.4.0.130:8444/lantern/leaderboard-backend
+  - name: 192.214.203.200:18443/lantern/backend
+    newName: 192.214.203.200:18443/lantern/leaderboard-backend
     newTag: dev-5392a2e59afa
