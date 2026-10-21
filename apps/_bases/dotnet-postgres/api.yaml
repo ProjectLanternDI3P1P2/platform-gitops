@@ -37,7 +37,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: api
-          image: 192.214.203.200:18443/lantern/backend:dev-bootstrap
+          image: groupe7.diiage.org:18443/lantern/backend:dev-bootstrap
           imagePullPolicy: Always
           ports:
             - name: http

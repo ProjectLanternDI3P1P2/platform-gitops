@@ -1,7 +1,7 @@
 # Desired configuration: provision Keycloak OIDC, its client Secret and TLS before sync.
 # This includes planned settings that are not yet active on the cluster.
 global:
-  domain: 10.4.0.130
+  domain: groupe7.diiage.org
   nodeSelector:
     node-role.kubernetes.io/worker: worker
 
@@ -18,7 +18,7 @@ redis-ha:
 
 configs:
   cm:
-    url: https://192.214.203.200:8443
+    url: https://groupe7.diiage.org:8443
     admin.enabled: false
     exec.enabled: false
     oidc.config: |
@@ -32,8 +32,8 @@ configs:
         - email
         - groups
   params:
-    # Argo CD terminates TLS itself because this endpoint is exposed directly
-    # through a pfSense port forward, without an Ingress controller.
+    # HAProxy terminates public TLS and verifies a second TLS connection to
+    # this NodePort backend. See ../HAPROXY_DOMAIN.md for cutover prerequisites.
     server.insecure: false
   rbac:
     policy.default: ""

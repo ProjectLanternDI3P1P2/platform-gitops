@@ -11,6 +11,6 @@ patches:
   - path: settings.yaml
 
 images:
-  - name: 192.214.203.200:18443/lantern/backend
-    newName: 192.214.203.200:18443/lantern/combat-backend
+  - name: groupe7.diiage.org:18443/lantern/backend
+    newName: groupe7.diiage.org:18443/lantern/combat-backend
     newTag: dev-8a5a02494141

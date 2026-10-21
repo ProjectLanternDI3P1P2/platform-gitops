@@ -1,8 +1,10 @@
 # Harbor registry on K3s
 
 Harbor is installed from the official `harbor/harbor` Helm chart `1.19.2`
-(Harbor `2.15.2`). It is exposed directly through a Kubernetes NodePort and
-pfSense at `https://10.4.0.130:8444`; it uses the Longhorn StorageClass.
+(Harbor `2.15.2`). The target public endpoint is
+`https://groupe7.diiage.org:18443` through pfSense HAProxy, which forwards over
+TLS to the existing NodePort. It uses the Longhorn StorageClass. Complete
+[the domain cutover](../HAPROXY_DOMAIN.md) before merging this configuration.
 
 - Developer onboarding: `DEVELOPER_GUIDE.md`
 - Firewall/NAT preparation: `NAT_EXPOSURE.md`
@@ -40,15 +42,15 @@ pwsh -File .\_scripts\install-harbor.ps1 `
   -HelmPath 'C:\path\to\helm.exe'
 ```
 
-The generated ingress certificate is self-signed. Before using Harbor from
-Docker, CI runners or K3s nodes, distribute its CA to each trusted client. Do
-not configure clients with global TLS verification disabled.
+The generated backend certificate is private. HAProxy must trust its CA; public
+Docker/CI clients validate the trusted domain certificate served by HAProxy.
+Do not configure clients with global TLS verification disabled.
 
 ## Network and certificate access
 
-Harbor access passes through the pfSense TCP `8444` NAT rule to NodePort
-`30444`. No Ingress, DNS record or hosts-file entry is required. See
-`NAT_EXPOSURE.md` for the pfSense fields and the required NAT-reflection check.
+Harbor access uses the HAProxy HTTPS listener on port `18443` and a TLS backend
+on NodePort `30444`. DNS resolves `groupe7.diiage.org` to the public address.
+See [HAProxy setup and validation](../HAPROXY_DOMAIN.md).
 
 Export the public Harbor CA without exporting any private key:
 
@@ -61,9 +63,9 @@ $encoded = kubectl -n harbor get secret harbor-nginx `
 )
 ```
 
-Trust that CA only on approved Docker/CI clients. K3s nodes also need the CA in
-their containerd registry configuration before workloads can pull private
-images from Harbor.
+Use that public CA to configure the Harbor backend trust in HAProxy. Verify
+that Docker/CI and containerd nodes trust the public frontend's certificate
+chain before pulling images through the new address.
 
 ## Verification
 

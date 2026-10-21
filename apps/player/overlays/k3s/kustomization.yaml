@@ -16,5 +16,5 @@ patches:
 
 # Déployer une nouvelle version = changer le tag. Toujours un tag fixe (vX.Y.Z), jamais "latest".
 images:
-  - name: 192.214.203.200:18443/lantern/player-backend
+  - name: groupe7.diiage.org:18443/lantern/player-backend
     newTag: v1.3.0
