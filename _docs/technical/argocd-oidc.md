@@ -12,8 +12,9 @@ retained.
    `https://groupe7.diiage.org/auth`. The Argo CD issuer is the realm-specific
    discovery root `https://groupe7.diiage.org/auth/realms/master`.
 2. Register confidential client `argocd` in realm `master` with redirect URI
-   `https://groupe7.diiage.org:8443/auth/callback` and web origin
-   `https://groupe7.diiage.org:8443`.
+   `https://10.4.111.200:8443/auth/callback` and web origin
+   `https://10.4.111.200:8443`. Argo CD is private; do not publish port 8443
+   on the public address or domain. See `platform/argocd/NAT_EXPOSURE.md`.
 3. Supply the matching client secret in `argocd/argocd-secret` under key
    `oidc.keycloak.clientSecret`, using the existing secret-management mechanism.
    The values file contains only its Argo CD reference. No secret belongs in Git.

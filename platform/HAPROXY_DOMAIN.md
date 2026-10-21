@@ -1,57 +1,52 @@
-# Argo CD and Harbor on groupe7.diiage.org
+# Harbor on groupe7.diiage.org
 
 This is a migration procedure, not evidence that pfSense has been changed.
 DNS already resolves `groupe7.diiage.org` to `192.214.203.200`.
 
 | Public URL | HAProxy backend | Kubernetes TLS endpoint |
 | --- | --- | --- |
-| `https://groupe7.diiage.org:8443` | `lantern-argocd` | `192.168.0.11:30443` |
+
 | `https://groupe7.diiage.org:18443` | `lantern-harbor` | `192.168.0.11:30444` |
 
 Keep the existing frontend on port 443, including the website and Keycloak
-`/auth` routing. These two new frontends have separate ports and backends.
-Do not combine the Argo CD and Harbor backend servers into one pool.
+`/auth` routing. Only Harbor uses a public frontend. Argo CD is private at `https://10.4.111.200:8443`; see [private access](argocd/NAT_EXPOSURE.md).
+Disable the old public Argo CD NAT/frontend.
 
 ## pfSense HAProxy preparation
 
 1. Back up the pfSense configuration. Check that its management interface is
-   not listening on the two requested ports.
-2. In Services > HAProxy > Backends create the two backends above, each with
+   not listening on the requested Harbor port.
+2. In Services > HAProxy > Backends create the Harbor backend above with
    its explicit internal address and port. Enable backend SSL and certificate
-   verification. Import the Harbor CA and the Argo CD self-signed server
-   certificate into the corresponding backend trust configuration. These are
+   verification. Import the Harbor CA into its backend trust configuration. These are
    public certificates; no private key needs to leave Kubernetes. Verify each
    backend in HAProxy stats before cutover. If the installed HAProxy version
    requires a matching DNS verification name, provision a suitable backend
    certificate before cutover; do not disable verification.
-3. In Services > HAProxy > Frontends create separate HTTPS frontends on the
-   public-facing address, ports 8443 and 18443. Use the existing trusted
-   certificate covering `groupe7.diiage.org` for both SSL-offloading listeners.
+3. In Services > HAProxy > Frontends create a Harbor HTTPS frontend on the
+   public-facing address, port 18443. Use the existing trusted
+   certificate covering `groupe7.diiage.org` for this SSL-offloading listener.
    Use HTTP mode and the corresponding default backend from the table.
    Preserve the Host header including its port. Set `X-Forwarded-Proto` to
    `https`. Use suitable client/server timeouts for large image uploads.
-4. Allow the two ports to pfSense itself from the approved client networks.
+4. Allow port 18443 to pfSense itself from the approved client networks.
    Existing NAT port-forward rules on these same address/port pairs must be
    disabled at cutover so traffic reaches HAProxy instead of bypassing it.
    Keep the old rule definitions for rollback. Apply the HAProxy configuration.
 5. Confirm access from the workstation and from the cluster/ARC network. If
    the public IP is not reachable internally, use split DNS pointing the same
-   domain to a pfSense address on which both new frontends also listen. Do not
-   point the domain directly to a worker, whose ports are 30443 and 30444.
+   domain to a pfSense address on which the Harbor frontend also listen. Do not
+   point the domain directly to a worker, whose Harbor port is 30444.
 
 The TLS certificate presented to public clients comes from HAProxy. Harbor's
-existing auto certificate and Argo CD's server certificate remain backend
-certificates. Changing the public URL does not replace those certificates.
+existing auto certificate remains a backend certificate. Changing the public URL does not replace those certificates.
 
 ## GitOps and application prerequisites
 
 Before merging the domain change:
 
-- Both HAProxy endpoints must pass HTTPS verification with the existing
+- The Harbor HAProxy endpoint must pass HTTPS verification with the existing
   trusted domain certificate.
-- In the Keycloak `argocd` client, add redirect URI
-  `https://groupe7.diiage.org:8443/auth/callback` and web origin
-  `https://groupe7.diiage.org:8443`. Keep previous entries until login succeeds.
 - Prepare `harbor-pull` credentials for `groupe7.diiage.org:18443` outside Git
   in all application namespaces. The bootstrap script uses the new address.
 - Verify containerd node trust and routing to the new address. For ARC, the
@@ -68,7 +63,6 @@ and port. Do not run old IP-based callers after the promotion allowlist changes.
 ## Validation
 
 ```powershell
-curl.exe --fail https://groupe7.diiage.org:8443/api/version
 curl.exe --fail https://groupe7.diiage.org:18443/api/v2.0/ping
 curl.exe --include https://groupe7.diiage.org:18443/v2/
 ```
@@ -76,8 +70,7 @@ curl.exe --include https://groupe7.diiage.org:18443/v2/
 The last request should return 401 with a token realm starting with
 `https://groupe7.diiage.org:18443/service/token`. It is an unauthenticated
 registry probe, not a failed login. Do not use `--insecure` for acceptance.
-Test Argo CD OIDC login and an authenticated image push/pull separately. For
-the HTTP-mode proxy, use `argocd login groupe7.diiage.org:8443 --grpc-web`.
+Test an authenticated image push/pull separately. Argo CD validation is covered by its private-access procedure.
 
 ## Rollback
 
