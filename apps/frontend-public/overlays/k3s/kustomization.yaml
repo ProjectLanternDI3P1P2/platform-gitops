@@ -8,5 +8,5 @@ resources:
   - ingress.yaml
 
 images:
-  - name: groupe7.diiage.org:18443/lantern/frontend-public
+  - name: 10.4.111.200:18443/lantern/frontend-public
     newTag: dev-latest

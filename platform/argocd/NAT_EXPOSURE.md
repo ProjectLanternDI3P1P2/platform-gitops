@@ -39,4 +39,4 @@ curl.exe --fail --cacert .\argocd-private-ca.crt https://10.4.111.200:8443/api/v
 ```
 
 Test OIDC login and confirm that public port 8443 no longer reaches Argo CD.
-Harbor remains on `https://groupe7.diiage.org:18443`; its CD is unchanged.
+Harbor remains on `https://10.4.111.200:18443`; its CD is unchanged.

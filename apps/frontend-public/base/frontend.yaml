@@ -35,7 +35,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: frontend-public
-          image: groupe7.diiage.org:18443/lantern/frontend-public:dev-bootsrap
+          image: 10.4.111.200:18443/lantern/frontend-public:dev-bootsrap
           imagePullPolicy: Always
           ports:
             - name: http

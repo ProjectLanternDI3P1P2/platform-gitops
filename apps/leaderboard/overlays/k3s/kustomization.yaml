@@ -13,6 +13,6 @@ patches:
   - path: data-services.yaml
 
 images:
-  - name: groupe7.diiage.org:18443/lantern/backend
-    newName: groupe7.diiage.org:18443/lantern/leaderboard-backend
+  - name: 10.4.111.200:18443/lantern/backend
+    newName: 10.4.111.200:18443/lantern/leaderboard-backend
     newTag: dev-5392a2e59afa

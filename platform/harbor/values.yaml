@@ -44,13 +44,13 @@ expose:
         nodePort: 30444
   tls:
     auto:
-      # Backend identity only; HAProxy serves the trusted groupe7.diiage.org
-      # certificate on public port 18443. See ../HAPROXY_DOMAIN.md.
-      commonName: 192.214.203.200
+      # Private direct TLS endpoint. Rotate the existing certificate and
+      # distribute its public CA before cutover; see NAT_EXPOSURE.md.
+      commonName: 10.4.111.200
     certSource: auto
     enabled: true
   type: nodePort
-externalURL: https://groupe7.diiage.org:18443
+externalURL: https://10.4.111.200:18443
 nginx:
   nodeSelector:
     node-role.kubernetes.io/worker: worker

@@ -1,10 +1,10 @@
 # Harbor registry on K3s
 
 Harbor is installed from the official `harbor/harbor` Helm chart `1.19.2`
-(Harbor `2.15.2`). The target public endpoint is
-`https://groupe7.diiage.org:18443` through pfSense HAProxy, which forwards over
-TLS to the existing NodePort. It uses the Longhorn StorageClass. Complete
-[the domain cutover](../HAPROXY_DOMAIN.md) before merging this configuration.
+(Harbor `2.15.2`). The target private endpoint is
+`https://10.4.111.200:18443` through a private pfSense port-forward to NodePort
+`30444`. Harbor terminates TLS and uses the Longhorn StorageClass. Complete
+[the private cutover](NAT_EXPOSURE.md) before merging this configuration.
 
 - Developer onboarding: `DEVELOPER_GUIDE.md`
 - Firewall/NAT preparation: `NAT_EXPOSURE.md`
@@ -42,15 +42,15 @@ pwsh -File .\_scripts\install-harbor.ps1 `
   -HelmPath 'C:\path\to\helm.exe'
 ```
 
-The generated backend certificate is private. HAProxy must trust its CA; public
-Docker/CI clients validate the trusted domain certificate served by HAProxy.
+The generated server certificate is private. Docker/CI clients and cluster
+nodes must trust its CA, and its IP SAN must cover `10.4.111.200`.
 Do not configure clients with global TLS verification disabled.
 
 ## Network and certificate access
 
-Harbor access uses the HAProxy HTTPS listener on port `18443` and a TLS backend
-on NodePort `30444`. DNS resolves `groupe7.diiage.org` to the public address.
-See [HAProxy setup and validation](../HAPROXY_DOMAIN.md).
+Harbor uses private TCP forwarding from `10.4.111.200:18443` to
+`192.168.0.11:30444`. Disable the old public NAT/frontend and keep access
+restricted to authorized private networks. See [private setup](NAT_EXPOSURE.md).
 
 Export the public Harbor CA without exporting any private key:
 
@@ -63,9 +63,8 @@ $encoded = kubectl -n harbor get secret harbor-nginx `
 )
 ```
 
-Use that public CA to configure the Harbor backend trust in HAProxy. Verify
-that Docker/CI and containerd nodes trust the public frontend's certificate
-chain before pulling images through the new address.
+Distribute that public CA to approved workstations, ARC Docker clients and
+containerd nodes before pulling images through the private address.
 
 ## Verification
 
