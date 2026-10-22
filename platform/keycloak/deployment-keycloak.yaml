@@ -28,6 +28,9 @@ spec:
         app: keycloak
 
     spec:
+      imagePullSecrets:
+        - name: harbor-pull
+
       nodeSelector:
         node-role.kubernetes.io/worker: worker
 
@@ -69,7 +72,7 @@ spec:
 
       containers:
         - name: keycloak
-          image: quay.io/keycloak/keycloak:26.7.4
+          image: 10.4.111.200:18443/lantern/keycloak-theme:v0.1.0
           imagePullPolicy: IfNotPresent
 
           args:

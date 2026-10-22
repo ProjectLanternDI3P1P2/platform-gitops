@@ -1,0 +1,43 @@
+# Clear any identity headers supplied by an Internet client before the JWT
+# middleware writes trusted values from the validated access token.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: remove-external-identity
+spec:
+  headers:
+    customRequestHeaders:
+      X-User-Id: ""
+      X-Username: ""
+      X-Roles: ""
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: keycloak-jwt
+spec:
+  plugin:
+    keycloak-jwt:
+      issuers:
+        - issuer: https://groupe7.diiage.org/auth/realms/lantern
+          jwks: http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/lantern/protocol/openid-connect/certs
+      validMethods:
+        - RS256
+      require:
+        azp: lantern-public
+      headerMap:
+        X-User-Id: sub
+        X-Username: preferred_username
+      removeMissingHeaders: true
+      parameterName: access_token
+      forwardToken: false
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: authenticated
+spec:
+  chain:
+    middlewares:
+      - name: remove-external-identity
+      - name: keycloak-jwt
