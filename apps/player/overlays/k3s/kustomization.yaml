@@ -3,6 +3,7 @@ kind: Kustomization
 
 components:
   - ../../../_components/database-migrations
+  - ../../../_components/keycloak-jwt
 
 namespace: player
 

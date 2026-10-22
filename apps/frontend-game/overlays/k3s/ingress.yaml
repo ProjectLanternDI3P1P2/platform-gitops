@@ -6,7 +6,7 @@ metadata:
 spec:
   ingressClassName: traefik
   rules:
-    - host: front.lantern.diiage
+    - host: groupe7.diiage.org
       http:
         paths:
           - path: /game
