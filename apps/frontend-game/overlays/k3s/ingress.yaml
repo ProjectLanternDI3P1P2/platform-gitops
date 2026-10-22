@@ -9,7 +9,18 @@ spec:
     - host: groupe7.diiage.org
       http:
         paths:
-          - path: /
+          - path: /game
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend-game
+                port:
+                  name: http
+
+    - host: groupe7.diiage.org
+      http:
+        paths:
+          - path: /game
             pathType: Prefix
             backend:
               service:
