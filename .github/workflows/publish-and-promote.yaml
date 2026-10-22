@@ -14,6 +14,11 @@ on:
         required: false
         type: boolean
         default: false
+      build_args:
+        description: Newline-delimited Docker build arguments for public, build-time application configuration.
+        required: false
+        type: string
+        default: ""
     secrets:
       HARBOR_USERNAME:
         required: true
@@ -53,6 +58,7 @@ jobs:
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
+          build-args: ${{ inputs.build_args }}
           secrets: |
             github_packages_credentials=Username=${{ github.actor }};Password=${{ github.token }};ValidAuthenticationTypes=Basic
 
@@ -149,6 +155,7 @@ jobs:
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
+          build-args: ${{ inputs.build_args }}
           secrets: |
             github_packages_credentials=Username=${{ github.actor }};Password=${{ github.token }};ValidAuthenticationTypes=Basic
 
