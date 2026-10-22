@@ -9,4 +9,4 @@ resources:
 
 images:
   - name: 10.4.111.200:18443/lantern/frontend-public
-    newTag: dev-latest
+    newTag: main-latest
