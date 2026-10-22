@@ -68,8 +68,23 @@ spec:
         runAsUser: 999
         runAsGroup: 999
         fsGroup: 999
+        # Ne repasse pas sur tous les fichiers du volume à chaque montage.
+        fsGroupChangePolicy: OnRootMismatch
         seccompProfile:
           type: RuntimeDefault
+      initContainers:
+        # RabbitMQ refuse un cookie Erlang lisible par le groupe, or fsGroup ajoute ce droit
+        # au montage du volume : on le remet en 0600 avant chaque démarrage.
+        - name: erlang-cookie
+          image: rabbitmq:4.1-management
+          command: ["sh", "-c", "if [ -f /var/lib/rabbitmq/.erlang.cookie ]; then chmod 0600 /var/lib/rabbitmq/.erlang.cookie; fi"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/rabbitmq
       containers:
         - name: rabbitmq
           # Même version majeure que les compose des microservices (rabbitmq:4).
