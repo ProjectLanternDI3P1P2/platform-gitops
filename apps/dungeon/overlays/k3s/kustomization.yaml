@@ -19,7 +19,7 @@ patches:
 images:
   - name: 10.4.111.200:18443/lantern/backend
     newName: 10.4.111.200:18443/lantern/dungeon-backend
-    newTag: git-5e8bb7ddec8e4adf21732a413f5e68503f2cf2f8
+    newTag: v2.3.1
 
 # Run after this overlay's patches so the migration targets the same schema.
 replacements:
