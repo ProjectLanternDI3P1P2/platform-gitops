@@ -7,9 +7,9 @@
 # Différence avec la classe "longhorn" par défaut : Retain au lieu de Delete, pour qu'une
 # suppression accidentelle du PVC ne détruise pas les données.
 #
-# Ressource de niveau cluster : à appliquer à la main, une seule fois, AVANT la première
-# synchronisation des applications mongodb et rabbitmq (sinon les PVC restent en Pending).
-#   kubectl apply -f platform/storage/longhorn-stateful.yaml
+# Ressource de niveau cluster, créée par l'application Argo CD cluster-foundation
+# (synchronisation manuelle). La synchroniser AVANT mongodb et rabbitmq, sinon les PVC
+# restent en Pending. Paramètres non modifiables une fois la classe créée.
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:

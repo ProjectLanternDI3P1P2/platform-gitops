@@ -65,8 +65,8 @@ premier démarrage : les changer ensuite se fait à la main dans le serveur.
 
 ## Mise en service (ordre)
 
-1. Appliquer une fois la classe de stockage :
-   `kubectl apply -f platform/storage/longhorn-stateful.yaml`
+1. La classe de stockage `longhorn-stateful` est créée par la synchronisation manuelle de
+   `cluster-foundation` (étape 5) : la faire avant de synchroniser `mongodb` et `rabbitmq`.
 2. Créer les Secrets :
 
    ```powershell

@@ -3,6 +3,7 @@ kind: Kustomization
 
 resources:
   - ../../platform/namespaces
+  - ../../platform/storage
 
 patches:
   - target:
