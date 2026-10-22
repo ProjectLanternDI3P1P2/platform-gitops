@@ -1,0 +1,8 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# StorageClasses managed by cluster-foundation (manual sync, no prune).
+# longhorn-db already exists on the cluster and is not listed yet: StorageClass
+# parameters are immutable, so compare the live object with Git before adding it.
+resources:
+  - longhorn-stateful.yaml
