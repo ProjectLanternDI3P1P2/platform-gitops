@@ -11,7 +11,7 @@ import yaml
 
 
 ROOT = Path(__file__).resolve().parents[2]
-MIGRATED_APPS = ("player", "dungeon", "rewards")
+MIGRATED_APPS = ("player", "dungeon", "rewards", "combat", "leaderboard")
 
 
 def render(root, app):
@@ -84,7 +84,7 @@ class MigrationJobTests(unittest.TestCase):
                         self.assertTrue(image.endswith(":v99.0.0"), image)
 
     def test_apps_without_migration_artifacts_are_not_enabled(self):
-        for app in ("combat", "leaderboard", "frontend-game", "frontend-public"):
+        for app in ("frontend-game", "frontend-public"):
             with self.subTest(app=app):
                 self.assertFalse(any(item and item["kind"] == "Job" for item in render(ROOT, app)))
 
