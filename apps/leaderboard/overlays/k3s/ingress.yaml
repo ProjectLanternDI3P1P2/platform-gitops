@@ -12,21 +12,7 @@ spec:
     - host: api.lantern.diiage
       http:
         paths:
-          - path: /api/v1/leaderboard
-            pathType: Prefix
-            backend:
-              service:
-                name: leaderboard-api
-                port:
-                  name: http
-          - path: /api/v1/players
-            pathType: Prefix
-            backend:
-              service:
-                name: leaderboard-api
-                port:
-                  name: http
-          - path: /api/v1/warehouse/rebuilds
+          - path: /api/leaderboard/v1
             pathType: Prefix
             backend:
               service:
@@ -36,21 +22,7 @@ spec:
     - host: groupe7.diiage.org
       http:
         paths:
-          - path: /api/v1/leaderboard
-            pathType: Prefix
-            backend:
-              service:
-                name: leaderboard-api
-                port:
-                  name: http
-          - path: /api/v1/players
-            pathType: Prefix
-            backend:
-              service:
-                name: leaderboard-api
-                port:
-                  name: http
-          - path: /api/v1/warehouse/rebuilds
+          - path: /api/leaderboard/v1
             pathType: Prefix
             backend:
               service:
