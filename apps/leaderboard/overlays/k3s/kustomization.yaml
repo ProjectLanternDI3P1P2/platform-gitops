@@ -11,6 +11,7 @@ namePrefix: leaderboard-
 resources:
   - ../../../_bases/dotnet-api
   - ingress.yaml
+  - public-ingress.yaml
 
 patches:
   - path: settings.yaml

@@ -1,0 +1,30 @@
+# The public ranking is rendered by Nuxt without a player session. Keep this
+# exact route outside the authenticated ingress; every other leaderboard path
+# continues to require a Keycloak token.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: api-gateway-leaderboard-public
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: api.lantern.diiage
+      http:
+        paths:
+          - path: /api/leaderboard/v1/public
+            pathType: Exact
+            backend:
+              service:
+                name: leaderboard-api
+                port:
+                  name: http
+    - host: groupe7.diiage.org
+      http:
+        paths:
+          - path: /api/leaderboard/v1/public
+            pathType: Exact
+            backend:
+              service:
+                name: leaderboard-api
+                port:
+                  name: http
