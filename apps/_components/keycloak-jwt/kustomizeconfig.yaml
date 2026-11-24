@@ -1,0 +1,9 @@
+nameReference:
+  - group: traefik.io
+    version: v1alpha1
+    kind: Middleware
+    fieldSpecs:
+      - group: traefik.io
+        version: v1alpha1
+        kind: Middleware
+        path: spec/chain/middlewares/name

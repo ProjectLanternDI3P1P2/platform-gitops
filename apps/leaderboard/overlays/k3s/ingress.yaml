@@ -1,0 +1,31 @@
+# Player profiles remain owned by Player. Leaderboard exposes only event-derived
+# statistics, the league table, and operator-gated warehouse rebuilds.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: api-gateway-leaderboard
+  annotations:
+    traefik.ingress.kubernetes.io/router.middlewares: leaderboard-authenticated@kubernetescrd
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: api.lantern.diiage
+      http:
+        paths:
+          - path: /api/leaderboard/v1
+            pathType: Prefix
+            backend:
+              service:
+                name: leaderboard-api
+                port:
+                  name: http
+    - host: groupe7.diiage.org
+      http:
+        paths:
+          - path: /api/leaderboard/v1
+            pathType: Prefix
+            backend:
+              service:
+                name: leaderboard-api
+                port:
+                  name: http

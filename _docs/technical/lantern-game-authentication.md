@@ -10,9 +10,11 @@ the Project Lantern frontend. It applies to the public host
   `10.4.111.200:18443/lantern/keycloak-theme:v0.1.0`.
 - The frontend uses the `lantern` realm and the `lantern-public` OIDC client at
   `https://groupe7.diiage.org/auth`.
-- Traefik validates access tokens before it sends Player and Dungeon requests
+- Traefik validates access tokens before it sends Player, Dungeon, and Leaderboard requests
   to their services. It removes client-provided identity headers, then forwards
-  `X-User-Id` from `sub` and `X-Username` from `preferred_username`.
+  `X-User-Id` from `sub`, `X-Username` from `preferred_username`, and `X-Roles`
+  from Keycloak's `realm_access` claim. The role claim is forwarded as JSON;
+  Leaderboard checks it for the warehouse operator role.
 
 ## Realm safety
 
@@ -75,13 +77,18 @@ creation must remain available. A valid access token must contain `sub`,
 `preferred_username`, and `azp: lantern-public`; the latter is enforced by the
 Traefik middleware.
 
+Create the `operator` realm role and grant it only to accounts allowed to run
+Leaderboard warehouse rebuilds. The local realm file defines the role but does
+not assign it to the demo player. Production realm changes are made in Keycloak,
+not through the theme deployment.
+
 ## Post-deploy validation
 
 1. Open `https://groupe7.diiage.org/auth/realms/lantern/.well-known/openid-configuration`.
    Its issuer must be `https://groupe7.diiage.org/auth/realms/lantern`.
 2. Sign in through the frontend and check that the Lantern Keycloak theme is
    used.
-3. Call a Player or Dungeon API route without a token: it must return `401`.
+3. Call a Player, Dungeon, or Leaderboard API route without a token: it must return `401`.
 4. Call the same route through the frontend: it must succeed and the receiving
    service must observe the trusted `X-User-Id` header.
 5. Confirm that `/auth` reaches Keycloak while `/` reaches `frontend-game` on
