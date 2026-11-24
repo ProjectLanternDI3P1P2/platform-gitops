@@ -1,0 +1,11 @@
+# Pendant une maintenance (drain d'un worker, mise à jour du cluster), garde au moins
+# 1 pod en service (US-10 T10.07). Ne protège pas d'une panne : c'est le rôle des 2 replicas.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: frontend-public
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: frontend-public

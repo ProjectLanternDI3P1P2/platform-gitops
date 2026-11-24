@@ -28,6 +28,13 @@ spec:
         - name: harbor-pull
       nodeSelector:
         node-role.kubernetes.io/worker: worker
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: frontend-public
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
