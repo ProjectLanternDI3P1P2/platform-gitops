@@ -38,6 +38,45 @@ alloy:
           action        = "replace"
           target_label  = "container"
         }
+                // env : prod par défaut, dev si le namespace est dev ou finit par -dev
+        rule {
+          target_label = "env"
+          replacement  = "prod"
+        }
+
+        rule {
+          source_labels = ["__meta_kubernetes_namespace"]
+          regex         = "(?:.+-)?(dev)"
+          target_label  = "env"
+        }
+
+        // service : nom du container, puis label "app", puis label "app.kubernetes.io/name"
+        // (la dernière règle qui correspond l'emporte)
+        rule {
+          source_labels = ["__meta_kubernetes_pod_container_name"]
+          regex         = "(.+)"
+          target_label  = "service"
+        }
+
+        rule {
+          source_labels = ["__meta_kubernetes_pod_label_app"]
+          regex         = "(.+)"
+          target_label  = "service"
+        }
+
+        rule {
+          source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name"]
+          regex         = "(.+)"
+          target_label  = "service"
+        }
+
+        // service_name reste égal au container, comme aujourd'hui (déduit par Loki),
+        // pour ne rien changer aux dashboards qui filtrent dessus
+        rule {
+          source_labels = ["__meta_kubernetes_pod_container_name"]
+          regex         = "(.+)"
+          target_label  = "service_name"
+        }
       }
 
       local.file_match "pod_logs" {
