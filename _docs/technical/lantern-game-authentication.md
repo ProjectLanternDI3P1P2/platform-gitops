@@ -77,6 +77,11 @@ creation must remain available. A valid access token must contain `sub`,
 `preferred_username`, and `azp: lantern-public`; the latter is enforced by the
 Traefik middleware.
 
+Create the `operator` realm role and grant it only to accounts allowed to run
+Leaderboard warehouse rebuilds. The local realm file defines the role but does
+not assign it to the demo player. Production realm changes are made in Keycloak,
+not through the theme deployment.
+
 ## Post-deploy validation
 
 1. Open `https://groupe7.diiage.org/auth/realms/lantern/.well-known/openid-configuration`.
