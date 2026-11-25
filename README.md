@@ -4,7 +4,7 @@ Single K3s configuration with namespaces organized by service.
 
 - clusters/k3s: namespace foundation.
 - bootstrap/argocd/k3s: cluster bootstrap and application discovery.
-- platform/keycloak: Keycloak and its dedicated PostgreSQL database in the keycloak namespace.
+- platform/keycloak: Keycloak using its dedicated database in the Longhorn-backed CloudNativePG production cluster.
 - platform: Argo CD parent Application entry point, with one child per adopted component.
 - apps/*/overlays/k3s: application configuration and published image identifiers.
 

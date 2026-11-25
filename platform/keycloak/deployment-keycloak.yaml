@@ -47,7 +47,7 @@ spec:
             - |
               echo "Attente de PostgreSQL..."
               until pg_isready \
-                -h postgresql-keycloak \
+                -h postgres-rw.database.svc.cluster.local \
                 -p 5432 \
                 -U "$POSTGRES_USER" \
                 -d keycloak
@@ -106,7 +106,7 @@ spec:
               value: postgres
 
             - name: KC_DB_URL
-              value: jdbc:postgresql://postgresql-keycloak.keycloak.svc.cluster.local:5432/keycloak
+              value: jdbc:postgresql://postgres-rw.database.svc.cluster.local:5432/keycloak
 
             - name: KC_DB_USERNAME
               valueFrom:

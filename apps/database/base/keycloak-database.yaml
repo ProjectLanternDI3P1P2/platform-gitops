@@ -1,0 +1,16 @@
+# Base dédiée à Keycloak dans le cluster PostgreSQL de production.
+# Elle ne partage ni tables ni schéma avec la base applicative "lantern".
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: keycloak
+  annotations:
+    # Le rôle propriétaire doit exister avant la création de la base.
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  cluster:
+    name: postgres
+  name: keycloak
+  owner: keycloak
+  # Une suppression accidentelle du manifeste ne supprime jamais la base.
+  databaseReclaimPolicy: retain

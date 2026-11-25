@@ -13,5 +13,7 @@ spec:
     server: https://kubernetes.default.svc
     namespace: keycloak
   syncPolicy:
-    # Manual synchronization until the recreated resources are adopted.
+    automated:
+      enabled: true
+      prune: false
     syncOptions: [CreateNamespace=true]
