@@ -10,3 +10,5 @@ resources:
   - argocd/applications/alloy.yaml
   - argocd/applications/traefik.yaml
   - argocd/applications/rabbitmq.yaml
+  - argocd/applications/cert-manager.yaml
+  - argocd/applications/plugin-barman-cloud.yaml

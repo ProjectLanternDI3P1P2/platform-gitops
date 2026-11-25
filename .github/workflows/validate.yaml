@@ -46,6 +46,8 @@ jobs:
           helm repo add grafana https://grafana.github.io/helm-charts
           helm repo add harbor https://helm.goharbor.io
           helm repo add longhorn https://charts.longhorn.io
+          helm repo add jetstack https://charts.jetstack.io
+          helm repo add cnpg https://cloudnative-pg.github.io/charts
           helm repo update
           helm template argocd argo/argo-cd --version 10.9.2 -n argocd --skip-crds \
             -f platform/argocd/values.yaml >/dev/null
@@ -55,6 +57,10 @@ jobs:
             -f observability/alloy/values.yaml >/dev/null
           helm template longhorn longhorn/longhorn --version 1.12.1 -n longhorn-system --skip-crds \
             -f platform/longhorn/values.yaml >/dev/null
+          helm template cert-manager jetstack/cert-manager --version v1.21.3 -n cert-manager \
+            -f platform/cert-manager/values.yaml >/dev/null
+          helm template plugin-barman-cloud cnpg/plugin-barman-cloud --version 0.9.0 -n cnpg-system \
+            -f platform/plugin-barman-cloud/values.yaml >/dev/null
           helm template arc oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set-controller \
             --version 0.14.2 -n arc-systems --skip-crds \
             -f platform/actions-runner-controller/controller/values.yaml >/dev/null

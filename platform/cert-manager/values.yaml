@@ -1,0 +1,37 @@
+# cert-manager (US-10 T10.04).
+# Utilisé uniquement pour les certificats TLS internes entre l'opérateur CloudNativePG
+# et le plugin Barman Cloud. Aucun certificat public, aucun ClusterIssuer ACME.
+#
+# Exception à la règle "pas de CRD via les Applications" (platform/README.md) :
+# cert-manager n'existait pas dans le cluster, ses CRD sont donc installées par ce chart.
+# keep: true = les CRD (et donc les certificats) restent si l'Application est supprimée.
+crds:
+  enabled: true
+  keep: true
+
+global:
+  nodeSelector:
+    node-role.kubernetes.io/worker: worker
+
+resources:
+  requests:
+    cpu: 20m
+    memory: 64Mi
+  limits:
+    memory: 256Mi
+
+webhook:
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      memory: 128Mi
+
+cainjector:
+  resources:
+    requests:
+      cpu: 10m
+      memory: 64Mi
+    limits:
+      memory: 256Mi
