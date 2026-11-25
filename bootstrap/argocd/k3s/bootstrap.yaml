@@ -7,7 +7,7 @@ spec:
   project: lantern-platform-k3s
   source:
     repoURL: https://github.com/ProjectLanternDI3P1P2/platform-gitops.git
-    targetRevision: main
+    targetRevision: feat/keycloak-longhorn
     path: bootstrap/argocd/k3s
   destination:
     server: https://kubernetes.default.svc

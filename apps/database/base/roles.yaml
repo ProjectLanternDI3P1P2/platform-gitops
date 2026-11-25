@@ -86,3 +86,20 @@ spec:
   databaseRoleReclaimPolicy: retain
   passwordSecret:
     name: postgres-role-leaderboard
+---
+# Keycloak conserve une base dédiée ; seul le cluster PostgreSQL est mutualisé.
+apiVersion: postgresql.cnpg.io/v1
+kind: DatabaseRole
+metadata:
+  name: keycloak
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  cluster:
+    name: postgres
+  name: keycloak
+  comment: Keycloak identity database
+  login: true
+  databaseRoleReclaimPolicy: retain
+  passwordSecret:
+    name: postgres-role-keycloak

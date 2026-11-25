@@ -5,3 +5,4 @@ resources:
   - cluster.yaml
   - roles.yaml
   - database.yaml
+  - keycloak-database.yaml

@@ -24,7 +24,7 @@ spec:
       project: lantern-apps
       source:
         repoURL: https://github.com/ProjectLanternDI3P1P2/platform-gitops.git
-        targetRevision: main
+        targetRevision: '{{ if eq (index .path.segments 1) "database" }}feat/keycloak-longhorn{{ else }}main{{ end }}'
         path: '{{ .path.path }}'
       destination:
         server: https://kubernetes.default.svc
