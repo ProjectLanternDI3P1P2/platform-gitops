@@ -12,3 +12,9 @@ crds:
   create: true
 
 logLevel: info
+
+# Uniquement sur les workers, comme le reste de la plateforme. Sans ça, le pod peut être placé
+# sur un master (k3s ne les protège pas par défaut) : le 25/11, 62 pods du plugin y ont été
+# évincés à cause du disque plein de kube-master-03.
+nodeSelector:
+  node-role.kubernetes.io/worker: worker
