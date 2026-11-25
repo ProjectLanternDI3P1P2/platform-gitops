@@ -1,0 +1,21 @@
+# Sauvegarde complète quotidienne de la base "lantern" vers Garage (US-10 T10.04).
+# Entre deux sauvegardes complètes, les WAL sont archivés en continu : on peut restaurer
+# à n'importe quel instant des 14 derniers jours (retentionPolicy de l'ObjectStore).
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: lantern-daily
+  annotations:
+    # Après le Cluster et la base.
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  # Format à 6 champs (secondes en premier). 02:00 UTC = 03:00 heure de Paris en hiver.
+  schedule: "0 0 2 * * *"
+  # Une première sauvegarde complète dès la création.
+  immediate: true
+  backupOwnerReference: self
+  cluster:
+    name: postgres
+  method: plugin
+  pluginConfiguration:
+    name: barman-cloud.cloudnative-pg.io

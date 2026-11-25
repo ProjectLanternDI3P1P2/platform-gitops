@@ -27,6 +27,14 @@ spec:
       database: lantern
       owner: lantern
 
+  # Sauvegardes vers Garage (US-10 T10.04) : archivage continu des WAL + sauvegardes complètes.
+  # Voir objectstore.yaml et scheduledbackup.yaml.
+  plugins:
+    - name: barman-cloud.cloudnative-pg.io
+      isWALArchiver: true
+      parameters:
+        barmanObjectName: garage
+
   storage:
     # Une seule copie Longhorn par volume : la redondance vient des 3 instances PostgreSQL.
     storageClass: longhorn-db
