@@ -38,31 +38,18 @@ The desired master-realm issuer is
 and an interactive login before enabling dependent SSO. No application SSO test
 was performed at that time.
 
-## Migration to CloudNativePG and Longhorn
+## Completed migration to CloudNativePG and Longhorn
 
-1. Provision `database/postgres-role-keycloak` from the existing
-   `keycloak/keycloak-secrets` credentials. Wait for Argo CD's `database`
-   Application to reconcile the dedicated role and database.
-2. Confirm the source is readable and the target is empty. Stop all Keycloak
-   replicas and wait for the Pods to terminate, then create the one-off Job
-   from `platform/keycloak/migration/job.yaml`. Its archive is held on an
-   ephemeral volume. The restore uses a single transaction and the Job compares
-   the realm, client, and user row counts before finishing.
-3. After the Job succeeds, synchronize the `keycloak` Application in Argo CD
-   with pruning disabled. Validate discovery and an interactive login.
+On 2026-11-25, a one-off Job transferred the identity database. The restore
+verified matching counts of 2 realms, 17 clients and 8 users. After the switch,
+both Keycloak replicas became ready and OIDC discovery responded for the
+`master` and `lantern` realms.
 
-   ```text
-   https://groupe7.diiage.org/auth/realms/master/.well-known/openid-configuration
-   ```
+The CloudNativePG role uses `database/postgres-role-keycloak`, provisioned
+outside Git. The `Database` and `DatabaseRole` use the `retain` policy.
 
-4. Keep `keycloak/postgresql-keycloak-pvc` for the agreed rollback period. Its
-   live Longhorn volume must only be deleted after a separate backup and explicit
-   team approval.
-
-If the Job fails before Argo CD changes the JDBC URL, restore the previous
-replica count to bring Keycloak back on the source. After the switch, returning
+Keep `keycloak/postgresql-keycloak-pvc` during the rollback period. Returning
 to the old database requires reconciling writes made on the new database.
-The CloudNativePG `Database` and `DatabaseRole` use the `retain` policy.
 
 Production tracks `main`. Keycloak's automated synchronization keeps the
 historical PostgreSQL resources available until the rollback period ends.
