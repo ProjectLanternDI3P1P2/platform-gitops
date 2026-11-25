@@ -13,7 +13,6 @@ spec:
     server: https://kubernetes.default.svc
     namespace: keycloak
   syncPolicy:
-    # Keep historical PostgreSQL resources available for rollback.
     automated:
       enabled: true
       prune: false

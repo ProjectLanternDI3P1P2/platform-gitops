@@ -48,8 +48,5 @@ both Keycloak replicas became ready and OIDC discovery responded for the
 The CloudNativePG role uses `database/postgres-role-keycloak`, provisioned
 outside Git. The `Database` and `DatabaseRole` use the `retain` policy.
 
-Keep `keycloak/postgresql-keycloak-pvc` during the rollback period. Returning
-to the old database requires reconciling writes made on the new database.
-
-Production tracks `main`. Keycloak's automated synchronization keeps the
-historical PostgreSQL resources available until the rollback period ends.
+The historical PostgreSQL Deployment, Service and PVC were removed after the
+migration. The old Longhorn volume is no longer available for rollback.
