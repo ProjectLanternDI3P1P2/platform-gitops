@@ -7,13 +7,14 @@ spec:
   project: lantern-platform-k3s
   source:
     repoURL: https://github.com/ProjectLanternDI3P1P2/platform-gitops.git
-    targetRevision: feat/keycloak-longhorn
+    targetRevision: main
     path: platform/keycloak
   destination:
     server: https://kubernetes.default.svc
     namespace: keycloak
   syncPolicy:
-    # Synchroniser manuellement après restauration de la base.
+    # Keep historical PostgreSQL resources available for rollback.
     automated:
-      enabled: false
+      enabled: true
+      prune: false
     syncOptions: [CreateNamespace=true]
