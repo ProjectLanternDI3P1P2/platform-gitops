@@ -28,6 +28,9 @@ spec:
   - ref: values
     repoURL: https://github.com/ProjectLanternDI3P1P2/platform-gitops.git
     targetRevision: main
+  - path: observability/alloy/manifests
+    repoURL: https://github.com/ProjectLanternDI3P1P2/platform-gitops.git
+    targetRevision: main
   syncPolicy:
     syncOptions:
     - CreateNamespace=false

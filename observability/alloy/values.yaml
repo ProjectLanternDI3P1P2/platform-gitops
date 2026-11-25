@@ -94,6 +94,9 @@ alloy:
         }
       }
     create: true
+  # No anonymous usage report to stats.grafana.org: the egress policy only
+  # allows the Kubernetes API, DNS and Loki.
+  enableReporting: false
   mounts:
     varlog: true
   securityContext:

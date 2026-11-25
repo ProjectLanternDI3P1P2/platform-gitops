@@ -36,3 +36,23 @@ The current Loki endpoint is an HTTP address on the private `192.168.0.0/24`
 network. This is a trusted-network deployment boundary, not transport
 encryption. Replace it with an HTTPS Loki endpoint and configure the required
 CA or client credentials before routing logs across an untrusted network.
+
+## Network isolation
+
+`manifests/` is the third source of the Argo CD Application and holds the
+NetworkPolicies of the `monitoring` namespace:
+
+- `default-deny-ingress`: no pod or external source can reach the namespace,
+  including the Alloy HTTP server on 12345 (debug UI, configuration, metrics).
+  Use `kubectl -n monitoring port-forward ds/alloy 12345` to reach it.
+- `alloy-egress`: Alloy may only reach CoreDNS, the Kubernetes API and Loki
+  (`192.168.0.15`, ports 3100 and 443).
+
+Usage reporting to Grafana Labs is disabled because the egress policy blocks
+it. After the sync, check that one Alloy pod per node is `Ready`, that its logs
+show no `context deadline exceeded` towards Loki or the Kubernetes API, and that
+recent logs appear in Grafana. Any new destination (Loki HTTPS entry point,
+another Loki zone) must be added to `alloy-egress` in the same change.
+
+The full flow matrix and the measures outside the cluster (pfSense, Zabbix,
+Grafana) are in `security/Monitoring security.md`.

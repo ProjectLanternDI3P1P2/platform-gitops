@@ -1,0 +1,12 @@
+# Alloy needs a hostPath mount on /var/log and runs as UID 0 (see
+# observability/alloy/README.md), which the baseline profile rejects. Enforce
+# stays privileged; audit and warn report every deviation from baseline.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+  labels:
+    app.kubernetes.io/part-of: lantern-platform
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/audit: baseline
+    pod-security.kubernetes.io/warn: baseline
