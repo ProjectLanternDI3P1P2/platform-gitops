@@ -19,6 +19,9 @@ Source: pfSense configuration backup (`resilience/Sauvegarde/Pfsense/Configurati
 | Loki (K3s zone) | 192.168.0.15 | K3s (192.168.0.0/24) | 3100 | No |
 | Alloy (pods) | DaemonSet, `monitoring` namespace | K3s | 12345 | Yes (`observability/alloy`) |
 | Zabbix agents | **TBD** | **TBD** | 10050 | No |
+| K3s servers | 192.168.0.10, .20, .30 | K3s | 6443 | Cluster |
+| K3s workers | 192.168.0.11, .12, .14 | K3s | — | Cluster |
+| Portainer CE | NodePort 30779 on every node | K3s | 30779 | No (manual install) |
 
 # 2. Findings in the current firewall configuration
 
@@ -34,6 +37,8 @@ These rules contradict the [Filtering policy](Filtering%20policy.md) (Deny All, 
 | F6 | NAT WAN `:3333` → Zabbix VM `:22` | SSH published on the Internet | Delete; SSH through VPN or bastion only |
 | F7 | NAT WAN `:8082` and `10.4.0.126:8083` → Wazuh `:443` | Wazuh dashboard published on the Internet | Delete; Wazuh through VPN only |
 | F8 | No OpenVPN or WireGuard server configured | No private access path for operators | Create the operator VPN (§4) |
+| F9 | WAN, pass, source any, destination any, port 30779 | Portainer (NodePort 30779, ServiceAccount bound to `cluster-admin`) published on the Internet: full control of the cluster behind a single login | Delete; Portainer through VPN only, MFA on Portainer accounts |
+| F10 | WAN, pass, source any, destination any, port 80 | Any internal host answering on port 80 is reachable from the Internet | Restrict the destination to the Traefik/HAProxy public entry point |
 
 # 3. Target flow matrix
 
@@ -45,6 +50,7 @@ Every flow not listed here is denied. Each pfSense rule carries the reference of
 | M2 | Operator VPN | Zabbix 192.168.2.21 | 443 | HTTPS | Zabbix frontend (only if retained, §6) |
 | M3 | Operator VPN | Wazuh 192.168.3.33 | 443 | HTTPS | Wazuh dashboard |
 | M4 | Operator VPN | Monitoring VMs | 22 | SSH | Administration |
+| M4b | Operator VPN | K3s nodes | 30779 | HTTPS | Portainer |
 | M5 | Zabbix agents | Zabbix server 192.168.2.21 | 10051 | TCP, TLS PSK | Active checks |
 | M6 | Zabbix server 192.168.2.21 | Zabbix agents | 10050 | TCP, TLS PSK | Passive checks |
 | M7 | Alloy (K3s nodes and pods) | Loki entry point | 443 | HTTPS | Log push (target) |
