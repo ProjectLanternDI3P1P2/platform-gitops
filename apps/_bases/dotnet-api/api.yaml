@@ -18,7 +18,9 @@ kind: Deployment
 metadata:
   name: api
 spec:
-  replicas: 1
+  # 2 pods minimum, sur 2 workers différents (US-10 T10.07) :
+  # la perte d'un worker ou d'un hôte Proxmox ne coupe pas le service.
+  replicas: 2
   selector:
     matchLabels:
       app.kubernetes.io/name: api
@@ -31,6 +33,15 @@ spec:
         - name: harbor-pull
       nodeSelector:
         node-role.kubernetes.io/worker: worker
+      # Répartit les pods sur des workers différents (même règle que player-api et frontend-game).
+      # ScheduleAnyway : si un worker est hors service, les pods démarrent quand même sur les autres.
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: api
       securityContext:
         runAsNonRoot: true
         seccompProfile:
