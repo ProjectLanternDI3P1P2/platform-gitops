@@ -34,6 +34,7 @@ const applications = {
 const application = process.env.APPLICATION ?? "";
 const image = process.env.IMAGE ?? "";
 const tag = process.env.TAG ?? "";
+const digest = process.env.DIGEST ?? "";
 const sourceRepository = process.env.SOURCE_REPOSITORY ?? "";
 const sourceRevision = process.env.SOURCE_REVISION ?? "";
 const expected = applications[application];
@@ -43,6 +44,9 @@ if (image !== expected.image) throw new Error(`Unexpected image for ${applicatio
 if (sourceRepository !== expected.repository) throw new Error(`Unexpected source repository for ${application}`);
 if (!/^v\d+\.\d+\.\d+$/.test(tag)) throw new Error(`Invalid immutable tag: ${tag}`);
 if (!/^[0-9a-f]{40}$/.test(sourceRevision)) throw new Error("Invalid source revision");
+// The digest is optional while callers migrate to the signing workflow.
+// When present it must be a valid sha256 digest.
+if (digest !== "" && !/^sha256:[0-9a-f]{64}$/.test(digest)) throw new Error(`Invalid image digest: ${digest}`);
 
 const path = `apps/${application}/overlays/k3s/kustomization.yaml`;
 const input = await readFile(path, "utf8");
@@ -54,15 +58,31 @@ const imageIndexes = lines.flatMap((line, index) => {
 if (imageIndexes.length !== 1) throw new Error(`Expected one image entry in ${path}`);
 
 let tagIndex = -1;
+let digestIndex = -1;
 for (let index = imageIndexes[0] + 1; index < lines.length; index += 1) {
   const value = lines[index].trim();
   if (value.startsWith("- name:")) break;
-  if (value.startsWith("newTag:")) {
-    tagIndex = index;
-    break;
-  }
+  if (value.startsWith("newTag:")) tagIndex = index;
+  if (value.startsWith("digest:")) digestIndex = index;
 }
 if (tagIndex < 0) throw new Error(`newTag entry not found in ${path}`);
 lines[tagIndex] = lines[tagIndex].replace(/newTag:\s*[^\r\n]+/, `newTag: ${tag}`);
+
+// Kustomize gives priority to the digest over the tag. A stale digest must never
+// stay next to a new tag, so it is replaced, added, or removed together with the tag.
+const eol = lines[tagIndex].endsWith("\r\n") ? "\r\n" : "\n";
+const indent = lines[tagIndex].match(/^\s*/)[0];
+if (digest !== "") {
+  if (digestIndex >= 0) {
+    lines[digestIndex] = lines[digestIndex].replace(/digest:\s*[^\r\n]+/, `digest: ${digest}`);
+  } else {
+    if (!lines[tagIndex].endsWith("\n")) lines[tagIndex] += eol;
+    lines.splice(tagIndex + 1, 0, `${indent}digest: ${digest}${eol}`);
+  }
+} else if (digestIndex >= 0) {
+  console.warn(`No digest received for ${application}: removing the previous digest.`);
+  lines.splice(digestIndex, 1);
+}
+
 const output = lines.join("");
 await writeFile(path, output, "utf8");
