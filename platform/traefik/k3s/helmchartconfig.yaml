@@ -6,9 +6,12 @@ metadata:
 spec:
   failurePolicy: reinstall
   valuesContent: |
-    additionalArguments:
-      - --experimental.plugins.keycloak-jwt.modulename=github.com/agilezebra/jwt-middleware
-      - --experimental.plugins.keycloak-jwt.version=v1.6.0
+    # The chart provisions writable /plugins-storage for declared plugins.
+    experimental:
+      plugins:
+        keycloak-jwt:
+          moduleName: github.com/agilezebra/jwt-middleware
+          version: v1.6.0
     affinity:
       podAntiAffinity:
         requiredDuringSchedulingIgnoredDuringExecution:
