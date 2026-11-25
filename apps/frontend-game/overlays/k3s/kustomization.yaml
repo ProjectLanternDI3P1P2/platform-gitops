@@ -10,7 +10,7 @@ resources:
 patches:
   - path: env.yaml
 
-# The promotion workflow replaces this bootstrap tag with main-<sha12>.
+# Pin a release that reads public configuration at runtime.
 images:
   - name: 10.4.111.200:18443/lantern/frontend-game
-    newTag: v0.2.3
+    newTag: v0.3.0
