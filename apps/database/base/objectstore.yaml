@@ -1,0 +1,44 @@
+# Stockage des sauvegardes PostgreSQL (US-10 T10.04, ADR-006).
+# Garage (S3 compatible) dans le LXC lxc-garage-01 sur pve-backup, hors du cluster K3s.
+#
+# Clés d'accès : Secret "garage-s3-cnpg" du namespace "database", créé à la main
+# (JAMAIS dans Git), clés ACCESS_KEY_ID, ACCESS_SECRET_KEY et REGION (= "garage").
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  name: garage
+  annotations:
+    # Avant le Cluster, qui le référence.
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  # Sauvegardes complètes et WAL gardés 14 jours, puis supprimés par le plugin.
+  retentionPolicy: "14d"
+  configuration:
+    destinationPath: s3://lantern-pg-backups/
+    # HTTP simple : trafic limité au réseau privé K3s (pare-feu du LXC). TLS : amélioration prévue.
+    endpointURL: http://192.168.0.40:3900
+    # Garage n'a pas de DNS par bucket : adresses du type endpoint/bucket/objet.
+    s3AddressingStyle: path
+    s3Credentials:
+      accessKeyId:
+        name: garage-s3-cnpg
+        key: ACCESS_KEY_ID
+      secretAccessKey:
+        name: garage-s3-cnpg
+        key: ACCESS_SECRET_KEY
+      region:
+        name: garage-s3-cnpg
+        key: REGION
+    wal:
+      compression: gzip
+      maxParallel: 2
+    data:
+      compression: gzip
+  instanceSidecarConfiguration:
+    env:
+      # Contournement documenté pour les stockages S3 compatibles non AWS :
+      # le client boto3 récent ajoute des sommes de contrôle que certains ne gèrent pas.
+      - name: AWS_REQUEST_CHECKSUM_CALCULATION
+        value: when_required
+      - name: AWS_RESPONSE_CHECKSUM_VALIDATION
+        value: when_required
