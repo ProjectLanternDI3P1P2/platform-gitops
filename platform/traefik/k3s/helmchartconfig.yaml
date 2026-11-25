@@ -92,6 +92,8 @@ spec:
       whenUnsatisfiable: DoNotSchedule
     updateStrategy:
       rollingUpdate:
-        maxSurge: 1
-        maxUnavailable: 0
+        # Required pod anti-affinity limits Traefik to one pod per worker.
+        # Free a worker before scheduling its replacement when all are occupied.
+        maxSurge: 0
+        maxUnavailable: 1
       type: RollingUpdate
