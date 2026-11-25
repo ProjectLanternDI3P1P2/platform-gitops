@@ -12,6 +12,9 @@ spec:
     - https://helm.goharbor.io
     - https://charts.longhorn.io
     - ghcr.io/actions/actions-runner-controller-charts
+    # Sauvegardes PostgreSQL (US-10 T10.04) : cert-manager et plugin Barman Cloud de CloudNativePG
+    - https://charts.jetstack.io
+    - https://cloudnative-pg.github.io/charts
   destinations:
     - namespace: argocd
       server: https://kubernetes.default.svc
@@ -32,6 +35,11 @@ spec:
     - namespace: kube-system
       server: https://kubernetes.default.svc
     - namespace: rabbitmq
+      server: https://kubernetes.default.svc
+    - namespace: cert-manager
+      server: https://kubernetes.default.svc
+    # Le plugin Barman Cloud doit être dans le namespace de l'opérateur CloudNativePG.
+    - namespace: cnpg-system
       server: https://kubernetes.default.svc
   clusterResourceWhitelist:
     - group: ""

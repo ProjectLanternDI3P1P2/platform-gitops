@@ -15,3 +15,4 @@ resources:
   - mongodb.yaml
   - rabbitmq.yaml
   - monitoring.yaml
+  - cert-manager.yaml

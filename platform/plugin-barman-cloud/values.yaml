@@ -1,0 +1,14 @@
+# Plugin Barman Cloud de CloudNativePG (US-10 T10.04).
+# Sauvegarde la base "lantern" (archivage continu des WAL + sauvegardes complètes)
+# vers le stockage S3 Garage de pve-backup (lxc-garage-01, 192.168.0.40:3900).
+#
+# Doit être installé dans le namespace de l'opérateur (cnpg-system).
+# Requiert cert-manager (certificats TLS entre l'opérateur et le plugin).
+# Requiert CloudNativePG >= 1.30 (installé : 1.30.1).
+#
+# Exception à la règle "pas de CRD via les Applications" (platform/README.md) :
+# la CRD ObjectStore n'existait pas, elle est installée par ce chart.
+crds:
+  create: true
+
+logLevel: info
