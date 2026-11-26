@@ -77,6 +77,8 @@ class MigrationJobTests(unittest.TestCase):
                     path = root / "apps" / app / "overlays" / "k3s" / "kustomization.yaml"
                     text, count = re.subn(r"newTag: [^\r\n]+", "newTag: v99.0.0", path.read_text(encoding="utf-8"), count=1)
                     self.assertEqual(1, count)
+                    # Like promote-image.mjs, a promotion without digest drops the previous one.
+                    text = re.sub(r"^[ \t]*digest: [^\r\n]+\r?\n", "", text, flags=re.MULTILINE)
                     path.write_text(text, encoding="utf-8")
                     resources = render(root, app)
                     for kind in ("Deployment", "Job"):
