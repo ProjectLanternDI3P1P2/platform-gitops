@@ -253,24 +253,27 @@ async function main() {
   }
 
   const number = Number(process.env.DEPLOYMENT_PROJECT_NUMBER);
-  const token = process.env.DEPLOYMENT_PROJECT_TOKEN;
-  if (!Number.isInteger(number) || number < 1 || !token) {
-    throw new Error("Configure DEPLOYMENT_PROJECT_NUMBER and the BOT_TOKEN Actions secret.");
+  const projectToken = process.env.DEPLOYMENT_PROJECT_TOKEN;
+  const releasesToken = process.env.DEPLOYMENT_RELEASES_TOKEN;
+  if (!Number.isInteger(number) || number < 1) {
+    throw new Error("DEPLOYMENT_PROJECT_NUMBER must be a positive integer.");
   }
+  if (!projectToken) throw new Error("Configure the DEPLOYMENT_PROJECT_TOKEN Actions secret.");
+  if (!releasesToken) throw new Error("Configure the BOT_TOKEN Actions secret for reading releases.");
 
-  const project = await loadProject(number, token);
-  const rows = await loadRows(project.id, token);
+  const project = await loadProject(number, projectToken);
+  const rows = await loadRows(project.id, projectToken);
   const snapshots = await Promise.all(Array.from(services, async ([application, { repository }]) => {
     const [expected, release] = await Promise.all([
       readDesiredImage(application),
-      latestRelease(repository, token),
+      latestRelease(repository, releasesToken),
     ]);
     const [confirmed, status] = await observeDeployment(application);
     return { repository, expected, release, confirmed, status };
   }));
 
   for (const { repository, expected, release, confirmed, status } of snapshots) {
-    const row = rows.get(repository) ?? await createRow(project.id, repository, token);
+    const row = rows.get(repository) ?? await createRow(project.id, repository, projectToken);
     const values = [
       ["Latest release", release],
       ["GitOps image", expected],
@@ -279,12 +282,12 @@ async function main() {
       ["Last checked", new Date().toISOString()],
     ];
     for (const [name, text] of values) {
-      await updateField(project.id, row, project.fieldIds.get(name), { text }, token);
+      await updateField(project.id, row, project.fieldIds.get(name), { text }, projectToken);
     }
     const health = deploymentHealth(expected, release, confirmed, status);
     await updateField(project.id, row, project.healthFieldId, {
       singleSelectOptionId: project.optionIds.get(health),
-    }, token);
+    }, projectToken);
     console.log(`${repository}: ${release}; ${expected}; ${status}; ${health}`);
   }
 }

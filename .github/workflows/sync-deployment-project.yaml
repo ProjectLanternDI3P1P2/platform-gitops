@@ -26,7 +26,8 @@ jobs:
       - name: Update GitHub Project
         env:
           DEPLOYMENT_PROJECT_NUMBER: ${{ vars.DEPLOYMENT_PROJECT_NUMBER || '1' }}
-          DEPLOYMENT_PROJECT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          DEPLOYMENT_PROJECT_TOKEN: ${{ secrets.DEPLOYMENT_PROJECT_TOKEN }}
+          DEPLOYMENT_RELEASES_TOKEN: ${{ secrets.BOT_TOKEN }}
           DEPLOYMENT_ARGOCD_URL: ${{ vars.DEPLOYMENT_ARGOCD_URL }}
           DEPLOYMENT_ARGOCD_TOKEN: ${{ secrets.DEPLOYMENT_ARGOCD_TOKEN }}
         run: node .github/scripts/sync-deployment-project.mjs
