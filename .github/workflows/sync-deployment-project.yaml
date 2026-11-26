@@ -2,8 +2,14 @@ name: Sync deployment project
 
 on:
   workflow_dispatch:
+  # Right after a promotion: the bot merges deploy(<app>): vX.Y.Z, which changes an overlay on main.
+  push:
+    branches: [main]
+    paths:
+      - 'apps/*/overlays/k3s/kustomization.yaml'
+  # Catch-up for new releases not promoted yet.
   schedule:
-    - cron: '23 */6 * * *'
+    - cron: '23 * * * *'
 
 permissions:
   contents: read
@@ -15,7 +21,7 @@ concurrency:
 jobs:
   sync:
     runs-on: ${{ vars.DEPLOYMENT_BOARD_RUNNER || 'ubuntu-24.04' }}
-    timeout-minutes: 5
+    timeout-minutes: 15
     steps:
       - name: Checkout GitOps main
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -30,4 +36,18 @@ jobs:
           DEPLOYMENT_RELEASES_TOKEN: ${{ secrets.BOT_TOKEN }}
           DEPLOYMENT_ARGOCD_URL: ${{ vars.DEPLOYMENT_ARGOCD_URL }}
           DEPLOYMENT_ARGOCD_TOKEN: ${{ secrets.DEPLOYMENT_ARGOCD_TOKEN }}
-        run: node .github/scripts/sync-deployment-project.mjs
+          EVENT_NAME: ${{ github.event_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node .github/scripts/sync-deployment-project.mjs | tee "${RUNNER_TEMP}/board.txt"
+          # After a promotion, Argo CD needs a few minutes to roll out, then writes the live images
+          # to the board itself (Argo CD notifications). Read the board again until no row is
+          # "Deployment pending" (ten minutes at most).
+          if [[ "${EVENT_NAME}" == "push" ]]; then
+            for attempt in 1 2 3 4 5; do
+              grep -q 'Deployment pending' "${RUNNER_TEMP}/board.txt" || break
+              sleep 120
+              node .github/scripts/sync-deployment-project.mjs | tee "${RUNNER_TEMP}/board.txt"
+            done
+          fi

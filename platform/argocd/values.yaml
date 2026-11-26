@@ -84,3 +84,50 @@ applicationSet:
 
 notifications:
   enabled: true
+  # Deployment tracking board (GitHub Project 1): Argo CD writes what is really running.
+  # Nobody needs access to Argo CD: it calls the GitHub API (outbound only) after each sync.
+  # The token lives outside Git, in Secret argocd-notifications-secret, key github-project-token:
+  # a fine-grained token of Diiage-Service-Account, resource owner ProjectLanternDI3P1P2,
+  # "Organization permissions > Projects: Read and write" only. See _docs/technical/deployment-project.md.
+  notifiers:
+    service.webhook.github-board: |
+      url: https://api.github.com/graphql
+      headers:
+        - name: Authorization
+          value: Bearer $github-project-token
+        - name: Content-Type
+          value: application/json
+  templates:
+    # Fills "Confirmed image" (images reported by Argo CD) and "Argo CD status" of the application's row.
+    # Board IDs: project PVT_kwDOE1wskc4BtVDY, one draft row per application (names of the ApplicationSet).
+    template.board-live-state: |
+      webhook:
+        github-board:
+          method: POST
+          body: |
+            {{- $items := dict "combat" "PVTI_lADOE1wskc4BtVDYzhMI5tE" "dungeon" "PVTI_lADOE1wskc4BtVDYzhMI5zc" "player" "PVTI_lADOE1wskc4BtVDYzhMI554" "rewards" "PVTI_lADOE1wskc4BtVDYzhMI6Ac" "leaderboard" "PVTI_lADOE1wskc4BtVDYzhMI6HM" "frontend-game" "PVTI_lADOE1wskc4BtVDYzhMI6NE" "frontend-public" "PVTI_lADOE1wskc4BtVDYzhMI6Ts" -}}
+            {{- $images := join ", " .app.status.summary.images -}}
+            {{- $status := printf "%s / %s · %s" .app.status.sync.status .app.status.health.status ((call .time.Now).UTC.Format "2006-01-02 15:04 UTC") -}}
+            {"query": "mutation($p: ID!, $i: ID!, $img: String!, $st: String!) { image: updateProjectV2ItemFieldValue(input: {projectId: $p, itemId: $i, fieldId: \"PVTF_lADOE1wskc4BtVDYzhrfeuk\", value: {text: $img}}) { clientMutationId } status: updateProjectV2ItemFieldValue(input: {projectId: $p, itemId: $i, fieldId: \"PVTF_lADOE1wskc4BtVDYzhrfe1U\", value: {text: $st}}) { clientMutationId } }", "variables": {"p": "PVT_kwDOE1wskc4BtVDY", "i": {{ index $items .app.metadata.name | toJson }}, "img": {{ $images | toJson }}, "st": {{ $status | toJson }}}}
+  triggers:
+    # Only the seven applications of the board; each trigger fires once when its condition becomes true.
+    trigger.on-board-deployed: |
+      - description: Sync finished and the application is healthy
+        when: app.metadata.name in ['combat', 'dungeon', 'player', 'rewards', 'leaderboard', 'frontend-game', 'frontend-public'] and app.status.operationState != nil and app.status.operationState.phase in ['Succeeded'] and app.status.health.status == 'Healthy'
+        oncePer: app.status.sync.revision
+        send: [board-live-state]
+    trigger.on-board-degraded: |
+      - description: Application degraded
+        when: app.metadata.name in ['combat', 'dungeon', 'player', 'rewards', 'leaderboard', 'frontend-game', 'frontend-public'] and app.status.health.status == 'Degraded'
+        send: [board-live-state]
+    trigger.on-board-sync-failed: |
+      - description: Sync failed
+        when: app.metadata.name in ['combat', 'dungeon', 'player', 'rewards', 'leaderboard', 'frontend-game', 'frontend-public'] and app.status.operationState != nil and app.status.operationState.phase in ['Error', 'Failed']
+        send: [board-live-state]
+  subscriptions:
+    - recipients:
+        - github-board
+      triggers:
+        - on-board-deployed
+        - on-board-degraded
+        - on-board-sync-failed
