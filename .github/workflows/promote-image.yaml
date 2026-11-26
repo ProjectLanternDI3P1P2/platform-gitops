@@ -10,6 +10,7 @@ concurrency:
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   promote:
@@ -40,8 +41,9 @@ jobs:
           APPLICATION: ${{ github.event.client_payload.application }}
         run: kubectl kustomize "apps/${APPLICATION}/overlays/k3s" >/dev/null
 
-      - name: Commit promotion
+      - name: Open promotion pull request
         env:
+          GH_TOKEN: ${{ github.token }}
           APPLICATION: ${{ github.event.client_payload.application }}
           TAG: ${{ github.event.client_payload.tag }}
           DIGEST: ${{ github.event.client_payload.digest }}
@@ -55,10 +57,20 @@ jobs:
             echo "Tag already promoted; nothing to commit."
             exit 0
           fi
+          # main requires a reviewed pull request: never push to it directly.
+          branch="deploy/${APPLICATION}-${TAG}"
+          if git ls-remote --exit-code --heads origin "${branch}" >/dev/null 2>&1; then
+            echo "Promotion branch ${branch} already exists; nothing to do."
+            exit 0
+          fi
           git config user.name "lantern-gitops-bot"
           git config user.email "lantern-gitops-bot@users.noreply.github.com"
+          git switch -c "${branch}"
           git add "apps/${APPLICATION}/overlays/k3s/kustomization.yaml"
           git commit -m "deploy(${APPLICATION}): ${TAG}" \
             -m "Source: ${SOURCE_REPOSITORY}@${SOURCE_REVISION}" \
             -m "Digest: ${DIGEST:-none}"
-          git push origin HEAD:main
+          git push origin "${branch}"
+          gh pr create --base main --head "${branch}" \
+            --title "deploy(${APPLICATION}): ${TAG}" \
+            --body "Promotes ${APPLICATION} ${TAG}. Source: ${SOURCE_REPOSITORY}@${SOURCE_REVISION}. Digest: ${DIGEST:-none}. Opened by the promote-image workflow; it needs the required reviews before Argo CD deploys it."
