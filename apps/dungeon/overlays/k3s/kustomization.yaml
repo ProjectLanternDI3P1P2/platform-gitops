@@ -19,7 +19,8 @@ patches:
 images:
   - name: 10.4.111.200:18443/lantern/backend
     newName: 10.4.111.200:18443/lantern/dungeon-backend
-    newTag: v2.3.1
+    newTag: v2.4.0
+    digest: sha256:fbddded312b5cb47e8fb294e27123a60c6bca61b6c7f154626a846ccba13f150
 
 # Run after this overlay's patches so the migration targets the same schema.
 replacements:
