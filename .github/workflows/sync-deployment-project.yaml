@@ -1,0 +1,32 @@
+name: Sync deployment project
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '23 */6 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deployment-project
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ${{ vars.DEPLOYMENT_BOARD_RUNNER || 'ubuntu-24.04' }}
+    timeout-minutes: 5
+    steps:
+      - name: Checkout GitOps main
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Update GitHub Project
+        env:
+          DEPLOYMENT_PROJECT_NUMBER: ${{ vars.DEPLOYMENT_PROJECT_NUMBER || '1' }}
+          DEPLOYMENT_PROJECT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          DEPLOYMENT_ARGOCD_URL: ${{ vars.DEPLOYMENT_ARGOCD_URL }}
+          DEPLOYMENT_ARGOCD_TOKEN: ${{ secrets.DEPLOYMENT_ARGOCD_TOKEN }}
+        run: node .github/scripts/sync-deployment-project.mjs
