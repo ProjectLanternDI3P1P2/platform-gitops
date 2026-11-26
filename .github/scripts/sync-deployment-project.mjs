@@ -28,13 +28,31 @@ const healthOptions = [
   { name: "Unverified", color: "GRAY", description: "Release, promotion, or live version could not be confirmed." },
 ];
 
+// The built-in Status field drives a Board view: Done = deployed and confirmed by Argo CD,
+// In Progress = a release or a rollout is on its way, Todo = someone should look at it.
+const statusField = "Status";
+const statusForHealth = {
+  "Up to date": "Done",
+  "Release pending": "In Progress",
+  "Deployment pending": "In Progress",
+  "Degraded": "Todo",
+  "Unverified": "Todo",
+};
+// Written by Argo CD notifications (platform/argocd/values.yaml) when nothing is configured here.
+const notVerified = "Non vérifiée";
+const waitingForArgo = "En attente d’Argo CD";
+
 function deploymentHealth(expected, release, confirmed, status) {
-  const [sync, health] = status.split(" / ");
-  if (["Degraded", "Missing"].includes(health?.split(" · ")[0])) return "Degraded";
+  const [sync, healthWithTime] = status.split(" / ");
+  const health = healthWithTime?.split(" · ")[0];
+  if (["Degraded", "Missing"].includes(health)) return "Degraded";
+  if (sync === "Failed") return "Degraded";
 
   // Compare the release to the tag before any digest, without treating the registry port as a tag.
   const tag = expected.split("@")[0].split("/").at(-1).split(":")[1];
   const versions = /^v\d+\.\d+\.\d+$/;
+  // GitOps still points to a non-release tag (dev-<sha>, git-<sha>, main-latest) while a release exists.
+  if (!versions.test(tag ?? "") && versions.test(release)) return "Release pending";
   if (versions.test(tag) && versions.test(release) && tag !== release) {
     const deployedParts = tag.slice(1).split(".").map(Number);
     const releaseParts = release.slice(1).split(".").map(Number);
@@ -44,11 +62,13 @@ function deploymentHealth(expected, release, confirmed, status) {
     }
   }
 
-  const verified = confirmed !== "Non vérifiée";
-  if (sync === "OutOfSync" || health === "Progressing" || (verified && confirmed !== expected)) {
+  // Confirmed image: the images Argo CD reports as running, separated by ", ".
+  const verified = ![notVerified, waitingForArgo, ""].includes(confirmed);
+  const running = verified && confirmed.split(", ").includes(expected);
+  if (sync === "OutOfSync" || health === "Progressing" || (verified && !running)) {
     return "Deployment pending";
   }
-  if (verified && tag === release && sync === "Synced" && health === "Healthy") return "Up to date";
+  if (running && tag === release && sync === "Synced" && health === "Healthy") return "Up to date";
   return "Unverified";
 }
 
@@ -108,7 +128,7 @@ async function latestRelease(repository, token) {
 async function observeDeployment(application) {
   const base = process.env.DEPLOYMENT_ARGOCD_URL?.replace(/\/$/, "");
   const token = process.env.DEPLOYMENT_ARGOCD_TOKEN;
-  if (!base && !token) return ["Non vérifiée", "Accès Argo CD non configuré"];
+  if (!base && !token) return null;
   if (!base || !token) throw new Error("Configure DEPLOYMENT_ARGOCD_URL and DEPLOYMENT_ARGOCD_TOKEN together.");
   if (new URL(base).protocol !== "https:") throw new Error("DEPLOYMENT_ARGOCD_URL must use HTTPS.");
 
@@ -199,7 +219,11 @@ async function loadProject(number, token) {
   if (healthOptions.some(({ name }) => !optionIds.has(name))) {
     throw new Error(`Field "${healthField}" must be a single-select field with all documented options.`);
   }
-  return { id: project.id, fieldIds, healthFieldId: health.id, optionIds };
+  const status = project.fields.nodes.find((entry) => entry?.name === statusField && entry.options);
+  return {
+    id: project.id, fieldIds, healthFieldId: health.id, optionIds,
+    status: status && { id: status.id, options: new Map(status.options.map(({ name, id }) => [name, id])) },
+  };
 }
 
 async function loadRows(projectId, token) {
@@ -211,7 +235,18 @@ async function loadRows(projectId, token) {
         ... on ProjectV2 {
           items(first: 100, after: $cursor) {
             pageInfo { endCursor hasNextPage }
-            nodes { id content { ... on DraftIssue { title } } }
+            nodes {
+              id
+              content { ... on DraftIssue { title } }
+              fieldValues(first: 30) {
+                nodes {
+                  ... on ProjectV2ItemFieldTextValue {
+                    text
+                    field { ... on ProjectV2FieldCommon { name } }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -220,7 +255,12 @@ async function loadRows(projectId, token) {
       const title = item?.content?.title;
       if (!repositories.has(title)) continue;
       if (rows.has(title)) throw new Error(`Duplicate draft rows named "${title}".`);
-      rows.set(title, item.id);
+      const text = (name) => item.fieldValues.nodes.find((value) => value?.field?.name === name)?.text;
+      rows.set(title, {
+        id: item.id,
+        confirmed: text("Confirmed image"),
+        status: text("Argo CD status"),
+      });
     }
     cursor = node.items.pageInfo.hasNextPage ? node.items.pageInfo.endCursor : null;
   } while (cursor);
@@ -268,17 +308,22 @@ async function main() {
       readDesiredImage(application),
       latestRelease(repository, releasesToken),
     ]);
-    const [confirmed, status] = await observeDeployment(application);
-    return { repository, expected, release, confirmed, status };
+    const observed = await observeDeployment(application);
+    return { repository, expected, release, observed };
   }));
 
-  for (const { repository, expected, release, confirmed, status } of snapshots) {
-    const row = rows.get(repository) ?? await createRow(project.id, repository, projectToken);
+  for (const { repository, expected, release, observed } of snapshots) {
+    const existing = rows.get(repository);
+    const row = existing?.id ?? await createRow(project.id, repository, projectToken);
+    // Argo CD pushes the live state itself; only an Argo CD API configured here overrides it.
+    const [confirmed, status] = observed ?? [
+      existing?.confirmed || notVerified,
+      existing?.status || waitingForArgo,
+    ];
     const values = [
       ["Latest release", release],
       ["GitOps image", expected],
-      ["Confirmed image", confirmed],
-      ["Argo CD status", status],
+      ...(observed ? [["Confirmed image", confirmed], ["Argo CD status", status]] : []),
       ["Last checked", new Date().toISOString()],
     ];
     for (const [name, text] of values) {
@@ -288,6 +333,10 @@ async function main() {
     await updateField(project.id, row, project.healthFieldId, {
       singleSelectOptionId: project.optionIds.get(health),
     }, projectToken);
+    const statusOption = project.status?.options.get(statusForHealth[health]);
+    if (statusOption) {
+      await updateField(project.id, row, project.status.id, { singleSelectOptionId: statusOption }, projectToken);
+    }
     console.log(`${repository}: ${release}; ${expected}; ${status}; ${health}`);
   }
 }
