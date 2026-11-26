@@ -19,13 +19,24 @@ Expose these organization or repository secrets to each application repository:
 
 - `HARBOR_USERNAME`: a Harbor robot account allowed to push under `lantern/`;
 - `HARBOR_TOKEN`: that robot account's token;
-- `GITOPS_DISPATCH_TOKEN`: a fine-grained token that can create repository
-  dispatches in `ProjectLanternDI3P1P2/platform-gitops`.
+- `GITOPS_DISPATCH_TOKEN2`: a fine-grained token of `Diiage-Service-Account`
+  (not a personal account) limited to `ProjectLanternDI3P1P2/platform-gitops`
+  with "Contents: read and write", the minimum to create a repository dispatch.
+  Callers pass it as the `GITOPS_DISPATCH_TOKEN` secret of the reusable workflow.
+  The former `GITOPS_DISPATCH_TOKEN` organization secret is kept unused as a fallback.
 
-The `platform-gitops` repository must allow Actions to write repository contents
-and to create pull requests (Settings, Actions, General, "Allow GitHub Actions to
-create and approve pull requests"). The promotion workflow never pushes to
-`main`: it pushes a `deploy/<application>-<tag>` branch and opens a reviewed PR.
+The `platform-gitops` repository needs a `BOT_TOKEN` repository secret: a
+fine-grained token of `Diiage-Service-Account` limited to this repository, with
+"Contents: read and write", "Pull requests: read and write" and "Checks: read". The promotion
+workflow uses it, not `GITHUB_TOKEN`, so that "Validate GitOps" runs on the
+promotion pull request and "Allow GitHub Actions to create and approve pull
+requests" can stay disabled. The workflow never pushes to `main`: it pushes a
+`deploy/<application>-<tag>` branch, opens a PR, closes any older promotion PR
+of the same application and merges the PR itself once "Validate GitOps" passes.
+The human review is the release pull request merged by the team: once release-please
+creates the `vX.Y.Z` tag, the image is built, signed and deployed without another
+manual step. `Diiage-Service-Account` is a bypass actor of the `main: merge only`
+ruleset in "pull request" mode (it can merge its pull requests, never push to `main`).
 
 ## Cluster pull credentials
 

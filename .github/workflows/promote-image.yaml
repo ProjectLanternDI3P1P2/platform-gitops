@@ -8,9 +8,14 @@ concurrency:
   group: gitops-image-promotions
   cancel-in-progress: false
 
+# The promotion branch and pull request are created with BOT_TOKEN (Diiage-Service-Account),
+# like release-please and back-merge in the application repositories:
+# - a pull request opened with GITHUB_TOKEN triggers no workflow, so "Validate GitOps" would never run on it;
+# - "Allow GitHub Actions to create and approve pull requests" stays disabled on this repository.
+# BOT_TOKEN (fine-grained, platform-gitops only): Contents RW, Pull requests RW, Checks R.
+# GITHUB_TOKEN only needs to read the repository.
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 jobs:
   promote:
@@ -20,6 +25,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           ref: main
+          token: ${{ secrets.BOT_TOKEN }}
 
       - name: Validate request and update Kustomize tag
         env:
@@ -43,7 +49,7 @@ jobs:
 
       - name: Open promotion pull request
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.BOT_TOKEN }}
           APPLICATION: ${{ github.event.client_payload.application }}
           TAG: ${{ github.event.client_payload.tag }}
           DIGEST: ${{ github.event.client_payload.digest }}
@@ -59,18 +65,35 @@ jobs:
           fi
           # main requires a reviewed pull request: never push to it directly.
           branch="deploy/${APPLICATION}-${TAG}"
-          if git ls-remote --exit-code --heads origin "${branch}" >/dev/null 2>&1; then
-            echo "Promotion branch ${branch} already exists; nothing to do."
+          if [[ -n "$(gh pr list --head "${branch}" --state open --json number --jq '.[].number')" ]]; then
+            echo "A promotion pull request for ${APPLICATION} ${TAG} is already open; nothing to do."
             exit 0
           fi
-          git config user.name "lantern-gitops-bot"
-          git config user.email "lantern-gitops-bot@users.noreply.github.com"
+          git config user.name "Diiage-Service-Account"
+          git config user.email "333379183+Diiage-Service-Account@users.noreply.github.com"
           git switch -c "${branch}"
           git add "apps/${APPLICATION}/overlays/k3s/kustomization.yaml"
           git commit -m "deploy(${APPLICATION}): ${TAG}" \
             -m "Source: ${SOURCE_REPOSITORY}@${SOURCE_REVISION}" \
             -m "Digest: ${DIGEST:-none}"
-          git push origin "${branch}"
+          # A branch left by a closed pull request is replaced, so the version can be promoted again.
+          git push --force origin "${branch}"
           gh pr create --base main --head "${branch}" \
             --title "deploy(${APPLICATION}): ${TAG}" \
-            --body "Promotes ${APPLICATION} ${TAG}. Source: ${SOURCE_REPOSITORY}@${SOURCE_REVISION}. Digest: ${DIGEST:-none}. Opened by the promote-image workflow; it needs the required reviews before Argo CD deploys it."
+            --body "Promotes ${APPLICATION} ${TAG}. Source: ${SOURCE_REPOSITORY}@${SOURCE_REVISION}. Digest: ${DIGEST:-none}. Opened by the promote-image workflow (Diiage-Service-Account) and merged automatically once Validate GitOps passes: the human review happened on the release pull request that created ${TAG}."
+          # Only one promotion per application waits for review: merging an older one after this
+          # one would deploy the older version again.
+          gh pr list --state open --limit 100 --json number,headRefName \
+            --jq ".[] | select(.headRefName != \"${branch}\" and (.headRefName | startswith(\"deploy/${APPLICATION}-v\"))) | .number" \
+          | while read -r older; do
+              gh pr close "${older}" --delete-branch --comment "Superseded by ${APPLICATION} ${TAG}."
+            done
+          # Release = deployment: the release pull request was reviewed by humans, so the promotion
+          # pull request is merged by Diiage-Service-Account (ruleset bypass, pull requests only)
+          # as soon as Validate GitOps succeeds. It is never merged if the validation fails.
+          for attempt in $(seq 1 30); do
+            if [[ -n "$(gh pr checks "${branch}" --json name --jq '.[].name' 2>/dev/null)" ]]; then break; fi
+            sleep 10
+          done
+          gh pr checks "${branch}" --watch --fail-fast --interval 15
+          gh pr merge "${branch}" --merge --admin --delete-branch
