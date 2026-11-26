@@ -8,8 +8,12 @@ concurrency:
   group: gitops-keycloak-theme-promotion
   cancel-in-progress: false
 
+# Same mechanism as promote-image.yaml: main only accepts pull requests, so the promotion is
+# opened and merged by Diiage-Service-Account (BOT_TOKEN, ruleset bypass in pull request mode)
+# once Validate GitOps passes. The human review is the frontend-game release pull request
+# that created the vX.Y.Z tag. GITHUB_TOKEN only needs to read the repository.
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   promote:
@@ -19,6 +23,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           ref: main
+          token: ${{ secrets.BOT_TOKEN }}
 
       - name: Validate request and update Keycloak image
         env:
@@ -36,8 +41,9 @@ jobs:
       - name: Render Keycloak deployment
         run: kubectl kustomize platform/keycloak >/dev/null
 
-      - name: Commit promotion
+      - name: Open and merge promotion pull request
         env:
+          GH_TOKEN: ${{ secrets.BOT_TOKEN }}
           TAG: ${{ github.event.client_payload.tag }}
           SOURCE_REPOSITORY: ${{ github.event.client_payload.source_repository }}
           SOURCE_REVISION: ${{ github.event.client_payload.source_revision }}
@@ -49,9 +55,32 @@ jobs:
             echo "Tag already promoted; nothing to commit."
             exit 0
           fi
-          git config user.name "lantern-gitops-bot"
-          git config user.email "lantern-gitops-bot@users.noreply.github.com"
+          # main requires a pull request: never push to it directly.
+          branch="deploy/keycloak-theme-${TAG}"
+          if [[ -n "$(gh pr list --head "${branch}" --state open --json number --jq '.[].number')" ]]; then
+            echo "A promotion pull request for keycloak-theme ${TAG} is already open; nothing to do."
+            exit 0
+          fi
+          git config user.name "Diiage-Service-Account"
+          git config user.email "333379183+Diiage-Service-Account@users.noreply.github.com"
+          git switch -c "${branch}"
           git add platform/keycloak/deployment-keycloak.yaml
           git commit -m "deploy(keycloak-theme): ${TAG}" \
             -m "Source: ${SOURCE_REPOSITORY}@${SOURCE_REVISION}"
-          git push origin HEAD:main
+          # A branch left by a closed pull request is replaced, so the version can be promoted again.
+          git push --force origin "${branch}"
+          gh pr create --base main --head "${branch}" \
+            --title "deploy(keycloak-theme): ${TAG}" \
+            --body "Promotes the Keycloak theme ${TAG}. Source: ${SOURCE_REPOSITORY}@${SOURCE_REVISION}. Opened by the promote-keycloak-theme workflow (Diiage-Service-Account) and merged automatically once Validate GitOps passes: the human review happened on the release pull request that created ${TAG}."
+          # Only one theme promotion waits: merging an older one later would roll the theme back.
+          gh pr list --state open --limit 100 --json number,headRefName \
+            --jq ".[] | select(.headRefName != \"${branch}\" and (.headRefName | startswith(\"deploy/keycloak-theme-v\"))) | .number" \
+          | while read -r older; do
+              gh pr close "${older}" --delete-branch --comment "Superseded by keycloak-theme ${TAG}."
+            done
+          for attempt in $(seq 1 30); do
+            if [[ -n "$(gh pr checks "${branch}" --json name --jq '.[].name' 2>/dev/null)" ]]; then break; fi
+            sleep 10
+          done
+          gh pr checks "${branch}" --watch --fail-fast --interval 15
+          gh pr merge "${branch}" --merge --admin --delete-branch
