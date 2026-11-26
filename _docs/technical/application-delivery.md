@@ -1,11 +1,14 @@
 # Application delivery through Harbor and Argo CD
 
 Application repositories call the reusable `publish-and-promote.yaml` workflow.
-A merge to `main` builds `main-<sha12>` and `main-latest` images on the private
-ARC runner and pushes them to Harbor without deploying. A release tag `vX.Y.Z`
-builds the `vX.Y.Z` image and sends a validated `promote-image` repository
-dispatch to this repository. The `promote-image.yaml` workflow changes only the
-matching Kustomize image tag on `main`. Argo CD then performs the deployment.
+A release tag `vX.Y.Z`, created by release-please when the release pull request
+is merged, is the only trigger: it builds the `vX.Y.Z` image once on the private
+ARC runner, scans it, signs it with Cosign, pushes it to Harbor and sends a
+validated `promote-image` repository dispatch to this repository.
+The `promote-image.yaml` workflow changes only the matching Kustomize image tag
+and opens a pull request named
+`deploy(<application>): vX.Y.Z`. After the required reviews and the merge,
+Argo CD performs the deployment.
 
 Application workflows never receive Kubernetes credentials and never run Helm
 or kubectl against the production cluster.
@@ -19,9 +22,10 @@ Expose these organization or repository secrets to each application repository:
 - `GITOPS_DISPATCH_TOKEN`: a fine-grained token that can create repository
   dispatches in `ProjectLanternDI3P1P2/platform-gitops`.
 
-The `platform-gitops` repository must allow Actions to write repository contents.
-If `main` is protected, explicitly allow the GitHub Actions identity used by the
-promotion workflow or replace the direct promotion commit with a reviewed PR.
+The `platform-gitops` repository must allow Actions to write repository contents
+and to create pull requests (Settings, Actions, General, "Allow GitHub Actions to
+create and approve pull requests"). The promotion workflow never pushes to
+`main`: it pushes a `deploy/<application>-<tag>` branch and opens a reviewed PR.
 
 ## Cluster pull credentials
 
