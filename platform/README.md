@@ -72,6 +72,17 @@ worker placement, trusted proxy addresses and traffic policy are retained.
 Strict anti-affinity requires a separate eligible worker for each replica;
 scaling above the current worker count needs additional eligible workers.
 
+Application Ingresses use the `traefik` ingress class and explicitly select the
+`web` entrypoint while the current routes are HTTP-only. Keep route paths and
+authentication/rewriting middlewares service-specific. Configure `websecure`
+and the reviewed TLS secret together when enabling HTTPS; do not enable TLS by
+changing the entrypoint alone.
+
+On `groupe7.diiage.org`, the public frontend owns `/` at priority 1 and the game
+frontend owns `/game` at priority 100. The higher game priority ensures its
+base path wins over the public catch-all; its Nuxt `baseURL` must remain
+`/game/`, while the public frontend remains rooted at `/`.
+
 Alloy retains the planned capability restrictions, disabled privilege escalation
 and readable River pipeline. Harbor and runner settings were also compared
 against the removed profiles; their planned keys were already retained.

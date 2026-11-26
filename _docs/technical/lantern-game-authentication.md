@@ -10,8 +10,9 @@ the Project Lantern frontend. It applies to the public host
   `10.4.111.200:18443/lantern/keycloak-theme:v0.1.0`.
 - The frontend uses the `lantern` realm and the `lantern-public` OIDC client at
   `https://groupe7.diiage.org/auth`.
-- Traefik validates access tokens before it sends Player, Dungeon, and Leaderboard requests
-  to their services. It removes client-provided identity headers, then forwards
+- Traefik validates access tokens before it sends Player, Dungeon, Rewards, and
+  Leaderboard requests to their services. It removes client-provided identity
+  headers, then forwards
   `X-User-Id` from `sub`, `X-Username` from `preferred_username`, and `X-Roles`
   from Keycloak's `realm_access` claim. The role claim is forwarded as JSON;
   Leaderboard checks it for the warehouse operator role.

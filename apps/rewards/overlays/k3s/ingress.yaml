@@ -1,0 +1,30 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: api-gateway-rewards
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+    traefik.ingress.kubernetes.io/router.middlewares: rewards-authenticated@kubernetescrd
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: api.lantern.diiage
+      http:
+        paths:
+          - path: /api/rewards/v1
+            pathType: Prefix
+            backend:
+              service:
+                name: rewards-api
+                port:
+                  name: http
+    - host: groupe7.diiage.org
+      http:
+        paths:
+          - path: /api/rewards/v1
+            pathType: Prefix
+            backend:
+              service:
+                name: rewards-api
+                port:
+                  name: http

@@ -3,12 +3,14 @@ kind: Kustomization
 
 components:
   - ../../../_components/database-migrations
+  - ../../../_components/keycloak-jwt
 
 namespace: rewards
 namePrefix: rewards-
 
 resources:
   - ../../../_bases/dotnet-api
+  - ingress.yaml
 
 patches:
   - path: settings.yaml
