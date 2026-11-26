@@ -19,6 +19,39 @@ const fields = new Map([
   ["Last checked", "TEXT"],
 ]);
 
+const healthField = "Deployment health";
+const healthOptions = [
+  { name: "Up to date", color: "GREEN", description: "Latest release confirmed in Argo CD." },
+  { name: "Release pending", color: "YELLOW", description: "GitOps targets an older release." },
+  { name: "Deployment pending", color: "BLUE", description: "Argo CD is still applying the desired version or reports drift." },
+  { name: "Degraded", color: "RED", description: "Argo CD reports a degraded or missing application." },
+  { name: "Unverified", color: "GRAY", description: "Release, promotion, or live version could not be confirmed." },
+];
+
+function deploymentHealth(expected, release, confirmed, status) {
+  const [sync, health] = status.split(" / ");
+  if (["Degraded", "Missing"].includes(health?.split(" · ")[0])) return "Degraded";
+
+  // Compare the release to the tag before any digest, without treating the registry port as a tag.
+  const tag = expected.split("@")[0].split("/").at(-1).split(":")[1];
+  const versions = /^v\d+\.\d+\.\d+$/;
+  if (versions.test(tag) && versions.test(release) && tag !== release) {
+    const deployedParts = tag.slice(1).split(".").map(Number);
+    const releaseParts = release.slice(1).split(".").map(Number);
+    const firstDifference = deployedParts.findIndex((part, index) => part !== releaseParts[index]);
+    if (firstDifference >= 0 && deployedParts[firstDifference] < releaseParts[firstDifference]) {
+      return "Release pending";
+    }
+  }
+
+  const verified = confirmed !== "Non vérifiée";
+  if (sync === "OutOfSync" || health === "Progressing" || (verified && confirmed !== expected)) {
+    return "Deployment pending";
+  }
+  if (verified && tag === release && sync === "Synced" && health === "Healthy") return "Up to date";
+  return "Unverified";
+}
+
 async function readDesiredImage(application) {
   const path = `apps/${application}/overlays/k3s/kustomization.yaml`;
   const manifest = await readFile(path, "utf8");
@@ -129,7 +162,10 @@ async function loadProject(number, token) {
       projectV2(number: $number) {
         id
         fields(first: 100) {
-          nodes { ... on ProjectV2Field { id name dataType } }
+          nodes {
+            ... on ProjectV2Field { id name dataType }
+            ... on ProjectV2SingleSelectField { id name options { id name } }
+          }
         }
       }
     }
@@ -143,7 +179,27 @@ async function loadProject(number, token) {
     if (field?.dataType !== type) throw new Error(`Create the text field "${name}" in the Project.`);
     fieldIds.set(name, field.id);
   }
-  return { id: project.id, fieldIds };
+  let health = project.fields.nodes.find((entry) => entry?.name === healthField);
+  if (!health) {
+    const input = {
+      projectId: project.id,
+      name: healthField,
+      dataType: "SINGLE_SELECT",
+      singleSelectOptions: healthOptions,
+    };
+    const created = await graphql(`mutation($input: CreateProjectV2FieldInput!) {
+      createProjectV2Field(input: $input) {
+        projectV2Field { ... on ProjectV2SingleSelectField { id options { id name } } }
+      }
+    }`, { input }, token);
+    health = created.createProjectV2Field.projectV2Field;
+  }
+
+  const optionIds = new Map(health.options?.map(({ name, id }) => [name, id]));
+  if (healthOptions.some(({ name }) => !optionIds.has(name))) {
+    throw new Error(`Field "${healthField}" must be a single-select field with all documented options.`);
+  }
+  return { id: project.id, fieldIds, healthFieldId: health.id, optionIds };
 }
 
 async function loadRows(projectId, token) {
@@ -180,14 +236,12 @@ async function createRow(projectId, title, token) {
   return data.addProjectV2DraftIssue.projectItem.id;
 }
 
-async function updateRow(project, itemId, values, token) {
-  for (const [name, text] of values) {
-    await graphql(`mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $text: String!) {
-      updateProjectV2ItemFieldValue(input: {
-        projectId: $projectId, itemId: $itemId, fieldId: $fieldId, value: { text: $text }
-      }) { projectV2Item { id } }
-    }`, { projectId: project.id, itemId, fieldId: project.fieldIds.get(name), text }, token);
-  }
+async function updateField(projectId, itemId, fieldId, value, token) {
+  await graphql(`mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $value: ProjectV2FieldValue!) {
+    updateProjectV2ItemFieldValue(input: {
+      projectId: $projectId, itemId: $itemId, fieldId: $fieldId, value: $value
+    }) { projectV2Item { id } }
+  }`, { projectId, itemId, fieldId, value }, token);
 }
 
 async function main() {
@@ -217,14 +271,21 @@ async function main() {
 
   for (const { repository, expected, release, confirmed, status } of snapshots) {
     const row = rows.get(repository) ?? await createRow(project.id, repository, token);
-    await updateRow(project, row, [
+    const values = [
       ["Latest release", release],
       ["GitOps image", expected],
       ["Confirmed image", confirmed],
       ["Argo CD status", status],
       ["Last checked", new Date().toISOString()],
-    ], token);
-    console.log(`${repository}: ${release}; ${expected}; ${status}`);
+    ];
+    for (const [name, text] of values) {
+      await updateField(project.id, row, project.fieldIds.get(name), { text }, token);
+    }
+    const health = deploymentHealth(expected, release, confirmed, status);
+    await updateField(project.id, row, project.healthFieldId, {
+      singleSelectOptionId: project.optionIds.get(health),
+    }, token);
+    console.log(`${repository}: ${release}; ${expected}; ${status}; ${health}`);
   }
 }
 
