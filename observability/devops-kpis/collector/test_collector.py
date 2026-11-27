@@ -1,4 +1,8 @@
+import contextlib
+import io
+import json
 import unittest
+from collections import OrderedDict
 from pathlib import Path
 from unittest.mock import patch
 
@@ -56,17 +60,17 @@ class CollectorTest(unittest.TestCase):
             with self.subTest(digest=digest, immutable=immutable, ready=ready):
                 latest["tags"][0]["immutable"] = immutable
                 workload = {"desired": 1, "rollout": "complete", "running": [{"digest": digest, "ready": ready}]}
-                metrics = collector.Metrics(SERVICE)
+                metrics = collector.Observations(SERVICE)
                 with patch.object(collector, "harbor", side_effect=FileNotFoundError):
                     collector.image_metrics(metrics, SERVICE["repository"], [latest], {"v1.2.0": SHA},
                                             ("v1.2.0", DIGEST, ""), workload, argo)
-                assessment = next(line for line in metrics.lines if line.startswith("lantern_delivery_assessment_info"))
-                self.assertIn(f'status="{expected}"', assessment)
+                assessment = next(row for row in metrics.rows if row["kind"] == "delivery_assessment_info")
+                self.assertEqual(assessment["status"], expected)
                 if expected == "confirmed":
-                    self.assertTrue(any(line.startswith("lantern_healthy_matching_sync_timestamp_seconds") for line in metrics.lines))
+                    self.assertTrue(any(row["kind"] == "healthy_matching_sync_timestamp_seconds" for row in metrics.rows))
 
     def test_ci_metrics_derive_duration_and_failures_from_jobs(self):
-        metrics = collector.Metrics(SERVICE)
+        metrics = collector.Observations(SERVICE)
         runs = [{"id": 123, "status": "completed", "run_attempt": 1, "conclusion": "failure",
                  "created_at": DATE, "updated_at": "2026-11-27T10:10:00Z", "run_started_at": DATE}]
         jobs = [{"name": "tests", "completed_at": "2026-11-27T10:03:00Z", "steps": [
@@ -75,11 +79,10 @@ class CollectorTest(unittest.TestCase):
         ]}]
         with patch.object(collector, "completed_jobs", return_value=jobs):
             collector.ci_metrics(metrics, "/repos/test", runs)
-        self.assertTrue(any(line.startswith("lantern_ci_duration_seconds") and line.endswith(" 180")
-                            for line in metrics.lines))
-        checks = [line for line in metrics.lines if line.startswith("lantern_ci_check_failed")]
-        self.assertTrue(any(line.endswith('check="test",run_id="123",attempt="1",conclusion="failure"} 1') for line in checks))
-        self.assertTrue(any('check="build"' in line and line.endswith(" 0") for line in checks))
+        duration = next(row for row in metrics.rows if row["kind"] == "ci_duration_seconds")
+        self.assertEqual(duration["value"], 180)
+        checks = {row["check"]: row["value"] for row in metrics.rows if row["kind"] == "ci_check_failed"}
+        self.assertEqual(checks, {"build": 0, "test": 1})
 
     def test_release_accepts_existing_combined_build_and_push_step(self):
         runs = [{"id": 123, "event": "push", "head_branch": "v1.2.0", "status": "completed",
@@ -88,16 +91,41 @@ class CollectorTest(unittest.TestCase):
                  "Attach signed provenance attestation", "Verify signature", "Verify published image"]
         jobs = [{"steps": [{"name": step, "conclusion": "success"} for step in steps]}]
         with patch.object(collector, "completed_jobs", return_value=jobs):
-            self.assertEqual(collector.delivery_jobs(collector.Metrics(SERVICE), "/repos/test", runs, {"v1.2.0"}),
+            self.assertEqual(collector.delivery_jobs(collector.Observations(SERVICE), "/repos/test", runs, {"v1.2.0"}),
                              {"v1.2.0": SHA})
 
     def test_rbac_or_api_failure_emits_availability_without_measurement(self):
-        metrics = collector.Metrics(SERVICE)
+        metrics = collector.Observations(SERVICE)
         with patch.object(collector, "credential", side_effect=FileNotFoundError):
             collector.quality_metrics(metrics, SERVICE["sonar"])
-        self.assertEqual(len(metrics.lines), 2)
-        self.assertTrue(all(line.startswith("lantern_source_available") and line.endswith(" 0")
-                            for line in metrics.lines))
+        self.assertEqual(len(metrics.rows), 2)
+        self.assertTrue(all(row["kind"] == "source_available" and row["value"] == 0 for row in metrics.rows))
+
+    def test_usage_requires_samples_for_all_active_pods(self):
+        workload = {"active_pods": ["api-one", "api-two"]}
+        samples = {"items": [
+            {"metadata": {"name": "api-one"}, "containers": [{"name": "api", "usage": {"cpu": "250000000n", "memory": "16Mi"}}]},
+            {"metadata": {"name": "api-two"}, "containers": [{"name": "api", "usage": {"cpu": "500m", "memory": "32Mi"}}]},
+            {"metadata": {"name": "other"}, "containers": [{"name": "api", "usage": {"cpu": "1", "memory": "4Gi"}}]},
+        ]}
+        with patch.object(collector, "kubernetes", return_value=samples):
+            self.assertEqual(collector.pod_usage(SERVICE, workload), {"cpu": 0.75, "memory": 48 * 2**20})
+            self.assertIsNone(collector.pod_usage(SERVICE, {"active_pods": ["api-one", "unobserved"]}))
+
+    def test_snapshot_emits_events_once_and_marks_complete_service(self):
+        metrics = collector.Observations(SERVICE)
+        metrics.add("workload_measure", 1, measure="desired")
+        metrics.add("argo_sync_failed", 1, operation_id="operation")
+        events = OrderedDict()
+        log = io.StringIO()
+        with contextlib.redirect_stdout(log):
+            collector.emit_snapshot(metrics.rows, 10, events)
+            collector.emit_snapshot(metrics.rows, 20, events)
+        rows = [json.loads(line.removeprefix("LANTERN_KPI ")) for line in log.getvalue().splitlines()]
+        self.assertEqual([row["kind"] for row in rows], [
+            "workload_measure", "argo_sync_failed", "collector_snapshot", "workload_measure", "collector_snapshot",
+        ])
+        self.assertEqual(rows[-1]["snapshot"], 20)
 
 
 if __name__ == "__main__":

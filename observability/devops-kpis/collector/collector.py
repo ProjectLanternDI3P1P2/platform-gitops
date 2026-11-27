@@ -7,11 +7,10 @@ import logging
 import math
 import re
 import ssl
-import threading
 import time
-from collections import defaultdict
+from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from decimal import Decimal
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlencode
@@ -34,35 +33,13 @@ SONAR_METRICS = (
     "software_quality_maintainability_issues",
 )
 FAILURE = {"failure", "timed_out", "startup_failure"}
-SNAPSHOT = (0.0, b"")
-METRIC_HELP = {
-    "argo_application_info": "Argo CD health, synchronization state and GitOps revision.",
-    "argo_last_operation_info": "Latest reported Argo CD operation phase.",
-    "argo_last_successful_sync_timestamp_seconds": "Timestamp of the latest Argo CD history entry.",
-    "ci_check_failed": "Whether an observed build or test check failed in this CI attempt.",
-    "ci_completed_timestamp_seconds": "GitHub update timestamp for a completed CI attempt.",
-    "ci_duration_seconds": "Elapsed time from CI run start to its latest job completion.",
-    "ci_last_run_timestamp_seconds": "Creation timestamp of the latest CI run and its observed status.",
-    "ci_oldest_observed_timestamp_seconds": "Earliest observed completed CI attempt timestamp in the current window.",
-    "collector_snapshot_timestamp_seconds": "Timestamp of the most recent collector snapshot.",
-    "delivery_assessment_info": "Assessment of whether the latest observed validated release is running and healthy.",
-    "delivery_jobs_available": "Whether release job steps were available for the observed run.",
-    "delivery_step_info": "Observed conclusion of a release workflow step.",
-    "github_latest_commit_info": "Source SHA at the head of the repository default branch.",
-    "harbor_accessory_info": "Harbor signature or attestation accessory associated with an image digest.",
-    "harbor_scan_info": "Harbor vulnerability scan status for an image digest.",
-    "healthy_matching_sync_timestamp_seconds": "Argo sync timestamp observed with matching healthy Kubernetes replicas.",
-    "image_info": "Image tag, manifest digest and associated source revision by stage.",
-    "image_vulnerabilities": "Number of findings in a successful Harbor scan by image and severity.",
-    "running_container_info": "Whether an observed running application container and its pod are Ready.",
-    "running_image_matches": "Whether all observed runtime image digests match the comparison reference.",
-    "service_info": "Project Lantern service catalogue and associated URLs.",
-    "sonar_gate_info": "Current SonarQube Cloud quality gate status.",
-    "sonar_measure": "Current SonarQube Cloud measure in its native unit.",
-    "source_available": "Whether a configured upstream source returned usable evidence.",
-    "workload_rollout_info": "Observed Kubernetes Deployment rollout status.",
+EVENT_KINDS = {"ci_completed_timestamp_seconds", "ci_duration_seconds", "ci_check_failed", "argo_sync_failed"}
+QUANTITY = re.compile(r"([-+]?(?:\d+(?:\.\d*)?|\.\d+))((?:[eE][-+]?\d+)|(?:[numkKMGTPE]i?))?")
+QUANTITY_SCALE = {
+    "": 1, "n": Decimal("1e-9"), "u": Decimal("1e-6"), "m": Decimal("1e-3"),
+    "k": 10**3, "M": 10**6, "G": 10**9, "T": 10**12, "P": 10**15, "E": 10**18,
+    "Ki": 2**10, "Mi": 2**20, "Gi": 2**30, "Ti": 2**40, "Pi": 2**50, "Ei": 2**60,
 }
-
 
 class NoRedirect(HTTPRedirectHandler):
     """Keep credentials on their configured origin."""
@@ -120,27 +97,21 @@ def evidence(value, expression):
     return value if isinstance(value, str) and expression.fullmatch(value) else ""
 
 
-def safe_label(value):
-    return str(value).replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
-
-
-class Metrics:
+class Observations:
     def __init__(self, service):
-        self.identity = {key: service[key] for key in ("service", "repository", "squad")}
-        self.lines = []
+        self.identity = dict(service_id=service["service"], repository=service["repository"], squad=service["squad"])
+        self.rows = []
 
-    def add(self, name, value=1, **labels):
-        if not math.isfinite(value):
-            return
-        fields = ",".join(f'{key}="{safe_label(label)}"' for key, label in (self.identity | labels).items())
-        self.lines.append(f"lantern_{name}{{{fields}}} {float(value):.15g}")
+    def add(self, kind, value=1, **fields):
+        if math.isfinite(value):
+            self.rows.append(dict(self.identity, kind=kind, value=value, **fields))
 
     def source(self, name, task):
         try:
             value = task()
         except Exception as error:
             # Avoid printing URLs, response bodies or credentials from upstream errors.
-            logging.warning("%s %s %s", self.identity["service"], name,
+            logging.warning("%s %s %s", self.identity["service_id"], name,
                             error.code if isinstance(error, HTTPError) else type(error).__name__)
             self.add("source_available", 0, source=name)
             return None
@@ -178,6 +149,7 @@ def ci_metrics(metrics, repo, runs):
         # GitHub exposes updated_at on runs. Job completion gives a more precise
         # end time for the duration when all jobs are available.
         end = timestamp(run["updated_at"])
+        labels["event_time"] = end
         metrics.add("ci_completed_timestamp_seconds", end, **labels)
         events.append(end)
         if jobs_unavailable:
@@ -275,6 +247,11 @@ def argo_metrics(metrics, application):
     operation = status.get("operationState", {})
     if operation.get("phase"):
         metrics.add("argo_last_operation_info", phase=operation["phase"])
+    finished = operation.get("finishedAt")
+    dry_run = operation.get("operation", {}).get("sync", {}).get("dryRun")
+    if finished and not dry_run and operation.get("phase") in {"Error", "Failed"}:
+        when = timestamp(finished)
+        metrics.add("argo_sync_failed", 1, event_time=when, operation_id=finished)
 
 
 def controlled_by(obj, uid):
@@ -316,8 +293,68 @@ def workload_state(service, image):
                 == status.get("replicas", 0) == len(active))
     failed = observed and any(condition.get("reason") in {"ProgressDeadlineExceeded", "ReplicaSetCreateError", "FailedCreate"}
                               for condition in status.get("conditions", []))
-    return dict(running=running, desired=desired, available=available,
+    health = dict(active_pods=[pod["metadata"]["name"] for pod in active],
+                  ready_pods=sum(any(condition["type"] == "Ready" and condition["status"] == "True"
+                                     for condition in pod.get("status", {}).get("conditions", [])) for pod in active))
+    app_status = [container for pod in active for container in pod.get("status", {}).get("containerStatuses", [])
+                  if container["name"] == service["container"]]
+    health["active_container_restarts"] = sum(container["restartCount"] for container in app_status)
+    health["crashloop_containers"] = sum(container.get("state", {}).get("waiting", {}).get("reason") == "CrashLoopBackOff"
+                                         for container in app_status)
+    template_resources = next((container.get("resources", {}) for container in spec["template"]["spec"]["containers"]
+                               if container["name"] == service["container"]), {})
+    return dict(health, running=running, desired=desired, available=available, resources=template_resources,
                 rollout="scaled_down" if desired == 0 else "complete" if complete else "failed" if failed else "progressing")
+
+
+def quantity(value):
+    match = QUANTITY.fullmatch(str(value))
+    if not match:
+        raise ValueError("invalid Kubernetes quantity")
+    number, suffix = match.groups()
+    if suffix and len(suffix) > 1 and suffix[0] in "eE" and suffix[1:] != "i":
+        return float(Decimal(number + suffix))
+    if suffix not in QUANTITY_SCALE and suffix is not None:
+        raise ValueError("unsupported Kubernetes quantity")
+    return float(Decimal(number) * QUANTITY_SCALE[suffix or ""])
+
+
+def pod_usage(service, workload):
+    active = set(workload["active_pods"])
+    if not active:
+        return None
+    samples = kubernetes(f'/apis/metrics.k8s.io/v1beta1/namespaces/{service["service"]}/pods')["items"]
+    usage = {}
+    for pod in samples:
+        name = pod["metadata"]["name"]
+        if name not in active:
+            continue
+        container = next((item for item in pod["containers"] if item["name"] == service["container"]), None)
+        if container and {"cpu", "memory"} <= container["usage"].keys():
+            usage[name] = container["usage"]
+    if usage.keys() != active:
+        return None
+    return {resource: sum(quantity(item[resource]) for item in usage.values()) for resource in ("cpu", "memory")}
+
+
+def workload_observations(metrics, service, workload):
+    metrics.add("workload_rollout_info", status=workload["rollout"])
+    for measure in ("desired", "available", "ready_pods", "active_container_restarts", "crashloop_containers"):
+        metrics.add("workload_measure", workload[measure], measure=measure)
+    metrics.add("workload_measure", len(workload["active_pods"]), measure="active_pods")
+    for resource in ("cpu", "memory"):
+        for dimension in ("requests", "limits"):
+            amount = workload["resources"].get(dimension, {}).get(resource)
+            if amount is not None:
+                metrics.add("resource_measure", quantity(amount) * workload["desired"],
+                            resource=resource, dimension=dimension)
+    usage = metrics.source("kubernetes_usage", lambda: pod_usage(service, workload))
+    if usage:
+        for resource, value in usage.items():
+            metrics.add("resource_measure", value, resource=resource, dimension="usage")
+    for pod in workload["running"]:
+        metrics.add("running_container_info", int(pod["ready"]), workload_pod=pod["pod"], image=pod["image"],
+                    image_id=pod["image_id"], digest=pod["digest"])
 
 
 def artifact_labels(artifact):
@@ -520,10 +557,9 @@ def collect(service, metrics):
 
     workload = metrics.source("kubernetes", lambda: workload_state(service, image))
     if workload:
-        metrics.add("workload_rollout_info", status=workload["rollout"])
-        for pod in workload["running"]:
-            metrics.add("running_container_info", int(pod["ready"]), pod=pod["pod"], image=pod["image"],
-                        image_id=pod["image_id"], digest=pod["digest"])
+        workload_observations(metrics, service, workload)
+    else:
+        metrics.add("source_available", 0, source="kubernetes_usage")
 
     desired = metrics.source("gitops", lambda: gitops_image(service, image))
     if desired:
@@ -539,66 +575,46 @@ def collect(service, metrics):
 
 
 def collect_service(service):
-    metrics = Metrics(service)
+    metrics = Observations(service)
     try:
         collect(service, metrics)
     except (ValueError, KeyError, TypeError, IndexError) as error:
         logging.error("%s snapshot %s", service["service"], type(error).__name__)
         metrics.add("source_available", 0, source="collector")
-    return metrics.lines
+    return metrics.rows
 
 
-def exposition(lines, snapshot_time):
-    samples = defaultdict(list)
-    samples["collector_snapshot_timestamp_seconds"].append(
-        f"lantern_collector_snapshot_timestamp_seconds {snapshot_time:.6f}"
-    )
-    for line in lines:
-        name = line.split("{", 1)[0].removeprefix("lantern_")
-        samples[name].append(line)
-    output = []
-    for name, series in samples.items():
-        output.extend((f"# HELP lantern_{name} {METRIC_HELP[name]}", f"# TYPE lantern_{name} gauge", *series))
-    return ("\n".join(output) + "\n").encode()
+def emit_snapshot(rows, snapshot, recent_events):
+    service_id = None
+    for row in rows:
+        if row["kind"] in EVENT_KINDS:
+            event = json.dumps(row, sort_keys=True, separators=(",", ":"))
+            if event in recent_events:
+                recent_events.move_to_end(event)
+                continue
+            recent_events[event] = None
+            if len(recent_events) > 6000:
+                recent_events.popitem(last=False)
+        else:
+            service_id = row["service_id"]
+        print("LANTERN_KPI " + json.dumps(dict(row, snapshot=snapshot), separators=(",", ":")))
+    # Emit a marker only after the service's snapshot rows have been written.
+    if service_id:
+        marker = dict(kind="collector_snapshot", service_id=service_id, snapshot=snapshot,
+                      value=snapshot)
+        print("LANTERN_KPI " + json.dumps(marker, separators=(",", ":")))
 
 
 def poll():
-    global SNAPSHOT
+    recent_events = OrderedDict()
     with ThreadPoolExecutor(max_workers=7) as pool:
         while True:
             start = time.monotonic()
-            results = list(pool.map(collect_service, SERVICES))
-            snapshot_time = time.time()
-            lines = (line for result in results for line in result)
-            SNAPSHOT = (snapshot_time, exposition(lines, snapshot_time))
+            for rows in pool.map(collect_service, SERVICES):
+                emit_snapshot(rows, time.time_ns() // 1_000_000, recent_events)
             time.sleep(max(1, INTERVAL - (time.monotonic() - start)))
-
-
-class Handler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        collected_at, snapshot = SNAPSHOT
-        if self.path == "/live":
-            self.respond(200, b"OK\n")
-        elif self.path in {"/metrics", "/ready"}:
-            if time.time() - collected_at > 2 * INTERVAL:
-                self.respond(503, b"Snapshot unavailable\n")
-            else:
-                self.respond(200, snapshot if self.path == "/metrics" else b"OK\n")
-        else:
-            self.respond(404, b"Not found\n")
-
-    def respond(self, status, body):
-        self.send_response(status)
-        self.send_header("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
-        self.send_header("Content-Length", str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
-
-    def log_message(self, *args):
-        pass
 
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
-    threading.Thread(target=poll, daemon=True).start()
-    HTTPServer(("0.0.0.0", 9108), Handler).serve_forever()
+    poll()

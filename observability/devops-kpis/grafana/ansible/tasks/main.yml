@@ -1,11 +1,3 @@
-- name: Validate the private Prometheus datasource settings
-  ansible.builtin.assert:
-    that:
-      - lantern_kpi_prometheus_url is defined
-      - lantern_kpi_prometheus_url is match('^https://[^/]+')
-      - (lantern_kpi_prometheus_user | length == 0) == (lantern_kpi_prometheus_password | length == 0)
-  no_log: true
-
 - name: Create the Lantern dashboard directory
   ansible.builtin.file:
     path: "{{ lantern_kpi_dashboard_dir }}"
@@ -34,14 +26,4 @@
     owner: root
     group: "{{ lantern_kpi_grafana_group }}"
     mode: "0640"
-  notify: Restart Lantern Grafana
-
-- name: Provision the private Prometheus datasource
-  ansible.builtin.template:
-    src: datasource.yaml.j2
-    dest: "{{ lantern_kpi_provisioning_dir }}/datasources/lantern-devops.yaml"
-    owner: root
-    group: "{{ lantern_kpi_grafana_group }}"
-    mode: "0640"
-  no_log: true
   notify: Restart Lantern Grafana

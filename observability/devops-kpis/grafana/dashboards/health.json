@@ -27,28 +27,6 @@
   "templating": {
     "list": [
       {
-        "name": "service",
-        "label": "Service",
-        "type": "query",
-        "datasource": {
-          "type": "prometheus",
-          "uid": "lantern-devops-prometheus"
-        },
-        "definition": "label_values(lantern_service_info, service)",
-        "query": {
-          "query": "label_values(lantern_service_info, service)",
-          "refId": "var-service"
-        },
-        "refresh": 1,
-        "multi": true,
-        "includeAll": true,
-        "allValue": "combat|dungeon|frontend-game|frontend-public|leaderboard|player|rewards",
-        "current": {
-          "text": "All",
-          "value": "$__all"
-        }
-      },
-      {
         "name": "loki",
         "label": "Kubernetes Loki",
         "type": "datasource",
@@ -57,6 +35,56 @@
         "multi": false,
         "includeAll": false,
         "options": []
+      },
+      {
+        "name": "service",
+        "label": "Service",
+        "type": "custom",
+        "query": "combat,dungeon,frontend-game,frontend-public,leaderboard,player,rewards",
+        "multi": true,
+        "includeAll": true,
+        "allValue": "combat|dungeon|frontend-game|frontend-public|leaderboard|player|rewards",
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "options": [
+          {
+            "text": "combat",
+            "value": "combat",
+            "selected": false
+          },
+          {
+            "text": "dungeon",
+            "value": "dungeon",
+            "selected": false
+          },
+          {
+            "text": "frontend-game",
+            "value": "frontend-game",
+            "selected": false
+          },
+          {
+            "text": "frontend-public",
+            "value": "frontend-public",
+            "selected": false
+          },
+          {
+            "text": "leaderboard",
+            "value": "leaderboard",
+            "selected": false
+          },
+          {
+            "text": "player",
+            "value": "player",
+            "selected": false
+          },
+          {
+            "text": "rewards",
+            "value": "rewards",
+            "selected": false
+          }
+        ]
       }
     ]
   },
@@ -65,8 +93,8 @@
       "title": "Workload rollout status",
       "type": "table",
       "datasource": {
-        "type": "prometheus",
-        "uid": "lantern-devops-prometheus"
+        "type": "loki",
+        "uid": "${loki}"
       },
       "description": "",
       "gridPos": {
@@ -84,7 +112,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "service"
+              "options": "service_id"
             },
             "properties": [
               {
@@ -92,7 +120,7 @@
                 "value": [
                   {
                     "title": "Open service detail",
-                    "url": "/d/lantern-devops-service/lantern-service-detail?var-service=${__data.fields.service}&${__url_time_range}"
+                    "url": "/d/lantern-devops-service/lantern-service-detail?var-service=${__data.fields.service_id}&${__url_time_range}"
                   }
                 ]
               }
@@ -102,38 +130,34 @@
       },
       "targets": [
         {
-          "expr": "lantern_workload_rollout_info{service=~\"${service:regex}\"}",
+          "expr": "(last_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, snapshot, status | kpi_kind=\"workload_rollout_info\" | service_id=~\"${service:regex}\" | unwrap kpi_value | __error__=\"\" [15m]) by (service_id, snapshot, status)) and on (service_id, snapshot) topk by (service_id) (1, max_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, snapshot | kpi_kind=\"collector_snapshot\" | service_id=~\"${service:regex}\" | unwrap kpi_value | __error__=\"\" [15m]) by (service_id, snapshot))",
           "legendFormat": "",
-          "format": "table",
-          "instant": true,
-          "range": false,
+          "queryType": "instant",
           "datasource": {
-            "type": "prometheus",
-            "uid": "lantern-devops-prometheus"
+            "type": "loki",
+            "uid": "${loki}"
           },
+          "editorMode": "code",
           "refId": "A"
         }
       ],
       "transformations": [
         {
+          "id": "labelsToFields",
+          "options": {
+            "mode": "columns"
+          }
+        },
+        {
           "id": "organize",
           "options": {
             "excludeByName": {
               "Time": true,
-              "__name__": true,
-              "job": true,
-              "instance": true,
-              "endpoint": true,
-              "namespace": true,
-              "pod": true,
-              "container": true,
-              "deployment": true,
-              "repository": true,
-              "squad": true,
+              "snapshot": true,
               "Value": true
             },
             "indexByName": {
-              "service": 0,
+              "service_id": 0,
               "status": 1
             }
           }
@@ -145,8 +169,8 @@
       "title": "Argo CD application status",
       "type": "table",
       "datasource": {
-        "type": "prometheus",
-        "uid": "lantern-devops-prometheus"
+        "type": "loki",
+        "uid": "${loki}"
       },
       "description": "",
       "gridPos": {
@@ -164,38 +188,34 @@
       },
       "targets": [
         {
-          "expr": "lantern_argo_application_info{service=~\"${service:regex}\"}",
+          "expr": "(last_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, snapshot, health, sync, gitops_revision | kpi_kind=\"argo_application_info\" | service_id=~\"${service:regex}\" | unwrap kpi_value | __error__=\"\" [15m]) by (service_id, snapshot, health, sync, gitops_revision)) and on (service_id, snapshot) topk by (service_id) (1, max_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, snapshot | kpi_kind=\"collector_snapshot\" | service_id=~\"${service:regex}\" | unwrap kpi_value | __error__=\"\" [15m]) by (service_id, snapshot))",
           "legendFormat": "",
-          "format": "table",
-          "instant": true,
-          "range": false,
+          "queryType": "instant",
           "datasource": {
-            "type": "prometheus",
-            "uid": "lantern-devops-prometheus"
+            "type": "loki",
+            "uid": "${loki}"
           },
+          "editorMode": "code",
           "refId": "A"
         }
       ],
       "transformations": [
         {
+          "id": "labelsToFields",
+          "options": {
+            "mode": "columns"
+          }
+        },
+        {
           "id": "organize",
           "options": {
             "excludeByName": {
               "Time": true,
-              "__name__": true,
-              "job": true,
-              "instance": true,
-              "endpoint": true,
-              "namespace": true,
-              "pod": true,
-              "container": true,
-              "deployment": true,
-              "repository": true,
-              "squad": true,
+              "snapshot": true,
               "Value": true
             },
             "indexByName": {
-              "service": 0,
+              "service_id": 0,
               "health": 1,
               "sync": 2,
               "gitops_revision": 3
@@ -209,8 +229,8 @@
       "title": "Desired and available replicas",
       "type": "timeseries",
       "datasource": {
-        "type": "prometheus",
-        "uid": "lantern-devops-prometheus"
+        "type": "loki",
+        "uid": "${loki}"
       },
       "description": "",
       "gridPos": {
@@ -228,28 +248,15 @@
       },
       "targets": [
         {
-          "expr": "kube_deployment_spec_replicas{namespace=~\"${service:regex}\",deployment=~\"api|player-api|frontend-game|frontend-public\"}",
-          "legendFormat": "{{namespace}} desired",
-          "format": "time_series",
-          "instant": false,
-          "range": true,
+          "expr": "last_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, measure | kpi_kind=\"workload_measure\" | service_id=~\"${service:regex}\" | measure=~\"desired|available\" | unwrap kpi_value | __error__=\"\" [10m]) by (service_id, measure)",
+          "legendFormat": "{{service_id}} · {{measure}}",
+          "queryType": "range",
           "datasource": {
-            "type": "prometheus",
-            "uid": "lantern-devops-prometheus"
+            "type": "loki",
+            "uid": "${loki}"
           },
+          "editorMode": "code",
           "refId": "A"
-        },
-        {
-          "expr": "kube_deployment_status_replicas_available{namespace=~\"${service:regex}\",deployment=~\"api|player-api|frontend-game|frontend-public\"}",
-          "legendFormat": "{{namespace}} available",
-          "format": "time_series",
-          "instant": false,
-          "range": true,
-          "datasource": {
-            "type": "prometheus",
-            "uid": "lantern-devops-prometheus"
-          },
-          "refId": "B"
         }
       ],
       "id": 3
@@ -258,8 +265,8 @@
       "title": "Ready and observed application pods",
       "type": "timeseries",
       "datasource": {
-        "type": "prometheus",
-        "uid": "lantern-devops-prometheus"
+        "type": "loki",
+        "uid": "${loki}"
       },
       "description": "",
       "gridPos": {
@@ -277,38 +284,25 @@
       },
       "targets": [
         {
-          "expr": "sum by(namespace) (kube_pod_status_ready{namespace=~\"${service:regex}\",pod=~\"(api|player-api|frontend-game|frontend-public)-[a-z0-9]+-[a-z0-9]+\",condition=\"true\"})",
-          "legendFormat": "{{namespace}} ready",
-          "format": "time_series",
-          "instant": false,
-          "range": true,
+          "expr": "last_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, measure | kpi_kind=\"workload_measure\" | service_id=~\"${service:regex}\" | measure=~\"ready_pods|active_pods\" | unwrap kpi_value | __error__=\"\" [10m]) by (service_id, measure)",
+          "legendFormat": "{{service_id}} · {{measure}}",
+          "queryType": "range",
           "datasource": {
-            "type": "prometheus",
-            "uid": "lantern-devops-prometheus"
+            "type": "loki",
+            "uid": "${loki}"
           },
+          "editorMode": "code",
           "refId": "A"
-        },
-        {
-          "expr": "count by(namespace) (kube_pod_status_ready{namespace=~\"${service:regex}\",pod=~\"(api|player-api|frontend-game|frontend-public)-[a-z0-9]+-[a-z0-9]+\",condition=\"true\"})",
-          "legendFormat": "{{namespace}} observed",
-          "format": "time_series",
-          "instant": false,
-          "range": true,
-          "datasource": {
-            "type": "prometheus",
-            "uid": "lantern-devops-prometheus"
-          },
-          "refId": "B"
         }
       ],
       "id": 4
     },
     {
-      "title": "Container restarts",
+      "title": "Restart count in active application containers",
       "type": "timeseries",
       "datasource": {
-        "type": "prometheus",
-        "uid": "lantern-devops-prometheus"
+        "type": "loki",
+        "uid": "${loki}"
       },
       "description": "",
       "gridPos": {
@@ -326,15 +320,14 @@
       },
       "targets": [
         {
-          "expr": "sum by(namespace) (increase(kube_pod_container_status_restarts_total{namespace=~\"${service:regex}\",container=~\"api|player-api|frontend-game|frontend-public\"}[$__rate_interval]))",
-          "legendFormat": "{{namespace}}",
-          "format": "time_series",
-          "instant": false,
-          "range": true,
+          "expr": "last_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, measure | kpi_kind=\"workload_measure\" | service_id=~\"${service:regex}\" | measure=~\"active_container_restarts\" | unwrap kpi_value | __error__=\"\" [10m]) by (service_id, measure)",
+          "legendFormat": "{{service_id}} · {{measure}}",
+          "queryType": "range",
           "datasource": {
-            "type": "prometheus",
-            "uid": "lantern-devops-prometheus"
+            "type": "loki",
+            "uid": "${loki}"
           },
+          "editorMode": "code",
           "refId": "A"
         }
       ],
@@ -344,8 +337,8 @@
       "title": "Containers in CrashLoopBackOff",
       "type": "timeseries",
       "datasource": {
-        "type": "prometheus",
-        "uid": "lantern-devops-prometheus"
+        "type": "loki",
+        "uid": "${loki}"
       },
       "description": "",
       "gridPos": {
@@ -363,15 +356,14 @@
       },
       "targets": [
         {
-          "expr": "sum by(namespace) (kube_pod_container_status_waiting_reason{namespace=~\"${service:regex}\",container=~\"api|player-api|frontend-game|frontend-public\",reason=\"CrashLoopBackOff\"})",
-          "legendFormat": "{{namespace}}",
-          "format": "time_series",
-          "instant": false,
-          "range": true,
+          "expr": "last_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, measure | kpi_kind=\"workload_measure\" | service_id=~\"${service:regex}\" | measure=~\"crashloop_containers\" | unwrap kpi_value | __error__=\"\" [10m]) by (service_id, measure)",
+          "legendFormat": "{{service_id}} · {{measure}}",
+          "queryType": "range",
           "datasource": {
-            "type": "prometheus",
-            "uid": "lantern-devops-prometheus"
+            "type": "loki",
+            "uid": "${loki}"
           },
+          "editorMode": "code",
           "refId": "A"
         }
       ],
@@ -381,10 +373,10 @@
       "title": "CPU usage, requests and limits",
       "type": "timeseries",
       "datasource": {
-        "type": "prometheus",
-        "uid": "lantern-devops-prometheus"
+        "type": "loki",
+        "uid": "${loki}"
       },
-      "description": "Application containers. Requests and limits are omitted when unset.",
+      "description": "Usage comes from the K3s resource metrics API. Requests and limits describe the desired replicas.",
       "gridPos": {
         "w": 12,
         "h": 8,
@@ -401,40 +393,15 @@
       },
       "targets": [
         {
-          "expr": "sum by (namespace) (rate(container_cpu_usage_seconds_total{namespace=~\"${service:regex}\",container=~\"api|player-api|frontend-game|frontend-public\",image!=\"\"}[$__rate_interval]))",
-          "legendFormat": "{{namespace}} usage",
-          "format": "time_series",
-          "instant": false,
-          "range": true,
+          "expr": "last_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, dimension, resource | kpi_kind=\"resource_measure\" | service_id=~\"${service:regex}\" | resource=\"cpu\" | unwrap kpi_value | __error__=\"\" [10m]) by (service_id, dimension)",
+          "legendFormat": "{{service_id}} · {{dimension}}",
+          "queryType": "range",
           "datasource": {
-            "type": "prometheus",
-            "uid": "lantern-devops-prometheus"
+            "type": "loki",
+            "uid": "${loki}"
           },
+          "editorMode": "code",
           "refId": "A"
-        },
-        {
-          "expr": "sum by (namespace) (kube_pod_container_resource_requests{namespace=~\"${service:regex}\",container=~\"api|player-api|frontend-game|frontend-public\",resource=\"cpu\"})",
-          "legendFormat": "{{namespace}} requests",
-          "format": "time_series",
-          "instant": false,
-          "range": true,
-          "datasource": {
-            "type": "prometheus",
-            "uid": "lantern-devops-prometheus"
-          },
-          "refId": "B"
-        },
-        {
-          "expr": "sum by (namespace) (kube_pod_container_resource_limits{namespace=~\"${service:regex}\",container=~\"api|player-api|frontend-game|frontend-public\",resource=\"cpu\"})",
-          "legendFormat": "{{namespace}} limits",
-          "format": "time_series",
-          "instant": false,
-          "range": true,
-          "datasource": {
-            "type": "prometheus",
-            "uid": "lantern-devops-prometheus"
-          },
-          "refId": "C"
         }
       ],
       "id": 7
@@ -443,10 +410,10 @@
       "title": "Memory usage, requests and limits",
       "type": "timeseries",
       "datasource": {
-        "type": "prometheus",
-        "uid": "lantern-devops-prometheus"
+        "type": "loki",
+        "uid": "${loki}"
       },
-      "description": "Application containers. Requests and limits are omitted when unset.",
+      "description": "Usage comes from the K3s resource metrics API. Requests and limits describe the desired replicas.",
       "gridPos": {
         "w": 12,
         "h": 8,
@@ -463,40 +430,15 @@
       },
       "targets": [
         {
-          "expr": "sum by (namespace) (container_memory_working_set_bytes{namespace=~\"${service:regex}\",container=~\"api|player-api|frontend-game|frontend-public\",image!=\"\"})",
-          "legendFormat": "{{namespace}} usage",
-          "format": "time_series",
-          "instant": false,
-          "range": true,
+          "expr": "last_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, dimension, resource | kpi_kind=\"resource_measure\" | service_id=~\"${service:regex}\" | resource=\"memory\" | unwrap kpi_value | __error__=\"\" [10m]) by (service_id, dimension)",
+          "legendFormat": "{{service_id}} · {{dimension}}",
+          "queryType": "range",
           "datasource": {
-            "type": "prometheus",
-            "uid": "lantern-devops-prometheus"
+            "type": "loki",
+            "uid": "${loki}"
           },
+          "editorMode": "code",
           "refId": "A"
-        },
-        {
-          "expr": "sum by (namespace) (kube_pod_container_resource_requests{namespace=~\"${service:regex}\",container=~\"api|player-api|frontend-game|frontend-public\",resource=\"memory\"})",
-          "legendFormat": "{{namespace}} requests",
-          "format": "time_series",
-          "instant": false,
-          "range": true,
-          "datasource": {
-            "type": "prometheus",
-            "uid": "lantern-devops-prometheus"
-          },
-          "refId": "B"
-        },
-        {
-          "expr": "sum by (namespace) (kube_pod_container_resource_limits{namespace=~\"${service:regex}\",container=~\"api|player-api|frontend-game|frontend-public\",resource=\"memory\"})",
-          "legendFormat": "{{namespace}} limits",
-          "format": "time_series",
-          "instant": false,
-          "range": true,
-          "datasource": {
-            "type": "prometheus",
-            "uid": "lantern-devops-prometheus"
-          },
-          "refId": "C"
         }
       ],
       "id": 8
@@ -508,7 +450,7 @@
         "type": "loki",
         "uid": "${loki}"
       },
-      "description": "Severity tokens in application log text. A line can match both queries.",
+      "description": "",
       "gridPos": {
         "w": 12,
         "h": 8,
@@ -524,23 +466,25 @@
       },
       "targets": [
         {
-          "expr": "sum by(namespace) (count_over_time({job=\"kubernetes-pods\",namespace=~\"${service:regex}\",container=~\"api|player-api|frontend-game|frontend-public\"} |~ \"(?i)(^|[[:space:]\\\"\\\\[])(error|err|fail|fatal|critical)([[:space:]\\\"\\\\]:,]|$)\" [$__interval]))",
+          "expr": "sum by (namespace) (count_over_time({job=\"kubernetes-pods\",namespace=~\"${service:regex}\",container=~\"api|player-api|frontend-game|frontend-public\"} |~ \"(?i)(^|[[:space:]\\\"\\\\[])(error|err|fail|fatal|critical)([[:space:]\\\"\\\\]:,]|$)\" [$__interval]))",
           "legendFormat": "{{namespace}} errors",
           "queryType": "range",
           "datasource": {
             "type": "loki",
             "uid": "${loki}"
           },
+          "editorMode": "code",
           "refId": "A"
         },
         {
-          "expr": "sum by(namespace) (count_over_time({job=\"kubernetes-pods\",namespace=~\"${service:regex}\",container=~\"api|player-api|frontend-game|frontend-public\"} |~ \"(?i)(^|[[:space:]\\\"\\\\[])(warn|warning)([[:space:]\\\"\\\\]:,]|$)\" [$__interval]))",
+          "expr": "sum by (namespace) (count_over_time({job=\"kubernetes-pods\",namespace=~\"${service:regex}\",container=~\"api|player-api|frontend-game|frontend-public\"} |~ \"(?i)(^|[[:space:]\\\"\\\\[])(warn|warning)([[:space:]\\\"\\\\]:,]|$)\" [$__interval]))",
           "legendFormat": "{{namespace}} warnings",
           "queryType": "range",
           "datasource": {
             "type": "loki",
             "uid": "${loki}"
           },
+          "editorMode": "code",
           "refId": "B"
         }
       ],
@@ -553,7 +497,7 @@
         "type": "loki",
         "uid": "${loki}"
       },
-      "description": "Matches log text for error and warning severity tokens. Select the existing Kubernetes Loki datasource.",
+      "description": "",
       "gridPos": {
         "w": 24,
         "h": 10,
@@ -581,6 +525,7 @@
             "type": "loki",
             "uid": "${loki}"
           },
+          "editorMode": "code",
           "refId": "A"
         }
       ],
@@ -593,92 +538,18 @@
       "id": 10
     },
     {
-      "title": "Kubernetes node readiness",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "lantern-devops-prometheus"
-      },
-      "description": "",
-      "gridPos": {
-        "w": 12,
-        "h": 8,
-        "x": 0,
-        "y": 50
-      },
-      "options": {},
-      "fieldConfig": {
-        "defaults": {
-          "noValue": "Unavailable"
-        },
-        "overrides": []
-      },
-      "targets": [
-        {
-          "expr": "kube_node_status_condition{condition=\"Ready\",status=\"true\"}",
-          "legendFormat": "{{node}}",
-          "format": "time_series",
-          "instant": false,
-          "range": true,
-          "datasource": {
-            "type": "prometheus",
-            "uid": "lantern-devops-prometheus"
-          },
-          "refId": "A"
-        }
-      ],
-      "id": 11
-    },
-    {
-      "title": "Kubernetes metrics scrape health",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "lantern-devops-prometheus"
-      },
-      "description": "",
-      "gridPos": {
-        "w": 12,
-        "h": 8,
-        "x": 12,
-        "y": 50
-      },
-      "options": {},
-      "fieldConfig": {
-        "defaults": {
-          "noValue": "Unavailable"
-        },
-        "overrides": []
-      },
-      "targets": [
-        {
-          "expr": "up{job=~\"kubelet|kube-state-metrics\"}",
-          "legendFormat": "{{job}} {{instance}}",
-          "format": "time_series",
-          "instant": false,
-          "range": true,
-          "datasource": {
-            "type": "prometheus",
-            "uid": "lantern-devops-prometheus"
-          },
-          "refId": "A"
-        }
-      ],
-      "id": 12
-    },
-    {
       "title": "Source availability",
       "type": "table",
       "datasource": {
-        "type": "prometheus",
-        "uid": "lantern-devops-prometheus"
+        "type": "loki",
+        "uid": "${loki}"
       },
-      "description": "1 = source responded, 0 = unavailable or not configured. Empty = no fresh collector sample.",
+      "description": "1 = source responded, 0 = unavailable or unconfigured. Empty = no fresh observation.",
       "gridPos": {
         "w": 12,
         "h": 8,
         "x": 0,
-        "y": 58
+        "y": 50
       },
       "options": {},
       "fieldConfig": {
@@ -689,44 +560,40 @@
       },
       "targets": [
         {
-          "expr": "lantern_source_available{service=~\"${service:regex}\",source=~\"kubernetes|argocd\"}",
+          "expr": "(last_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, snapshot, source | kpi_kind=\"source_available\" | service_id=~\"${service:regex}\" | source=~\"kubernetes.*|argocd\" | unwrap kpi_value | __error__=\"\" [15m]) by (service_id, snapshot, source)) and on (service_id, snapshot) topk by (service_id) (1, max_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, snapshot | kpi_kind=\"collector_snapshot\" | service_id=~\"${service:regex}\" | unwrap kpi_value | __error__=\"\" [15m]) by (service_id, snapshot))",
           "legendFormat": "",
-          "format": "table",
-          "instant": true,
-          "range": false,
+          "queryType": "instant",
           "datasource": {
-            "type": "prometheus",
-            "uid": "lantern-devops-prometheus"
+            "type": "loki",
+            "uid": "${loki}"
           },
+          "editorMode": "code",
           "refId": "A"
         }
       ],
       "transformations": [
         {
+          "id": "labelsToFields",
+          "options": {
+            "mode": "columns"
+          }
+        },
+        {
           "id": "organize",
           "options": {
             "excludeByName": {
               "Time": true,
-              "__name__": true,
-              "job": true,
-              "instance": true,
-              "endpoint": true,
-              "namespace": true,
-              "pod": true,
-              "container": true,
-              "deployment": true,
-              "repository": true,
-              "squad": true
+              "snapshot": true
             },
             "indexByName": {
-              "service": 0,
+              "service_id": 0,
               "source": 1,
               "Value": 2
             }
           }
         }
       ],
-      "id": 13
+      "id": 11
     }
   ]
 }

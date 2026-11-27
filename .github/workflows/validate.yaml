@@ -43,7 +43,6 @@ jobs:
         run: |
           set -euo pipefail
           helm repo add argo https://argoproj.github.io/argo-helm
-          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
           helm repo add grafana https://grafana.github.io/helm-charts
           helm repo add harbor https://helm.goharbor.io
           helm repo add longhorn https://charts.longhorn.io
@@ -71,8 +70,6 @@ jobs:
 
       - name: Validate DevOps KPI configuration
         run: |
-          helm template lantern-kpi prometheus-community/kube-prometheus-stack --version 92.10.0 -n monitoring --include-crds \
-            -f observability/devops-kpis/prometheus/values.yaml >/dev/null
           python3 -B observability/devops-kpis/grafana/generate.py --check
           python3 -B -m unittest discover -s observability/devops-kpis/collector
 

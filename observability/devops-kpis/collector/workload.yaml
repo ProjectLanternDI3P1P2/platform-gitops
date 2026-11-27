@@ -30,16 +30,9 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       containers:
-        - name: collector
+        - name: lantern-kpi-collector
           image: docker.io/library/python:3.13.13-slim-bookworm@sha256:355bfa66770995d7e9a0da4b3473b44d0cb451f6b56f5615ad9c39e3c4eca03f
           command: [python3, -B, -u, /app/collector.py]
-          ports:
-            - name: metrics
-              containerPort: 9108
-          readinessProbe:
-            httpGet: {path: /ready, port: metrics}
-          livenessProbe:
-            httpGet: {path: /live, port: metrics}
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -60,21 +53,3 @@ spec:
             secretName: lantern-kpi-api
             optional: true
             defaultMode: 0440
----
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: lantern-kpi-collector-ingress
-  namespace: monitoring
-spec:
-  podSelector:
-    matchLabels:
-      app.kubernetes.io/name: lantern-kpi-collector
-  policyTypes: [Ingress]
-  ingress:
-    - from:
-        - podSelector:
-            matchLabels:
-              operator.prometheus.io/name: lantern-kpi-prometheus
-      ports:
-        - {port: 9108, protocol: TCP}

@@ -27,28 +27,6 @@
   "templating": {
     "list": [
       {
-        "name": "service",
-        "label": "Service",
-        "type": "query",
-        "datasource": {
-          "type": "prometheus",
-          "uid": "lantern-devops-prometheus"
-        },
-        "definition": "label_values(lantern_service_info, service)",
-        "query": {
-          "query": "label_values(lantern_service_info, service)",
-          "refId": "var-service"
-        },
-        "refresh": 1,
-        "multi": false,
-        "includeAll": false,
-        "allValue": null,
-        "current": {
-          "text": "combat",
-          "value": "combat"
-        }
-      },
-      {
         "name": "loki",
         "label": "Kubernetes Loki",
         "type": "datasource",
@@ -57,6 +35,56 @@
         "multi": false,
         "includeAll": false,
         "options": []
+      },
+      {
+        "name": "service",
+        "label": "Service",
+        "type": "custom",
+        "query": "combat,dungeon,frontend-game,frontend-public,leaderboard,player,rewards",
+        "multi": false,
+        "includeAll": false,
+        "allValue": null,
+        "current": {
+          "text": "combat",
+          "value": "combat"
+        },
+        "options": [
+          {
+            "text": "combat",
+            "value": "combat",
+            "selected": true
+          },
+          {
+            "text": "dungeon",
+            "value": "dungeon",
+            "selected": false
+          },
+          {
+            "text": "frontend-game",
+            "value": "frontend-game",
+            "selected": false
+          },
+          {
+            "text": "frontend-public",
+            "value": "frontend-public",
+            "selected": false
+          },
+          {
+            "text": "leaderboard",
+            "value": "leaderboard",
+            "selected": false
+          },
+          {
+            "text": "player",
+            "value": "player",
+            "selected": false
+          },
+          {
+            "text": "rewards",
+            "value": "rewards",
+            "selected": false
+          }
+        ]
       }
     ]
   },
@@ -65,8 +93,8 @@
       "title": "Service links",
       "type": "table",
       "datasource": {
-        "type": "prometheus",
-        "uid": "lantern-devops-prometheus"
+        "type": "loki",
+        "uid": "${loki}"
       },
       "description": "",
       "gridPos": {
@@ -153,37 +181,34 @@
       },
       "targets": [
         {
-          "expr": "lantern_service_info{service=~\"${service:regex}\"}",
+          "expr": "(last_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, snapshot, github_url, sonar_url, harbor_url, argocd_url | kpi_kind=\"service_info\" | service_id=~\"${service:regex}\" | unwrap kpi_value | __error__=\"\" [15m]) by (service_id, snapshot, repository, github_url, sonar_url, harbor_url, argocd_url)) and on (service_id, snapshot) topk by (service_id) (1, max_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, snapshot | kpi_kind=\"collector_snapshot\" | service_id=~\"${service:regex}\" | unwrap kpi_value | __error__=\"\" [15m]) by (service_id, snapshot))",
           "legendFormat": "",
-          "format": "table",
-          "instant": true,
-          "range": false,
+          "queryType": "instant",
           "datasource": {
-            "type": "prometheus",
-            "uid": "lantern-devops-prometheus"
+            "type": "loki",
+            "uid": "${loki}"
           },
+          "editorMode": "code",
           "refId": "A"
         }
       ],
       "transformations": [
         {
+          "id": "labelsToFields",
+          "options": {
+            "mode": "columns"
+          }
+        },
+        {
           "id": "organize",
           "options": {
             "excludeByName": {
               "Time": true,
-              "__name__": true,
-              "job": true,
-              "instance": true,
-              "endpoint": true,
-              "namespace": true,
-              "pod": true,
-              "container": true,
-              "deployment": true,
-              "squad": true,
+              "snapshot": true,
               "Value": true
             },
             "indexByName": {
-              "service": 0,
+              "service_id": 0,
               "repository": 1,
               "github_url": 2,
               "sonar_url": 3,
@@ -199,8 +224,8 @@
       "title": "Latest default-branch commit",
       "type": "table",
       "datasource": {
-        "type": "prometheus",
-        "uid": "lantern-devops-prometheus"
+        "type": "loki",
+        "uid": "${loki}"
       },
       "description": "",
       "gridPos": {
@@ -236,37 +261,34 @@
       },
       "targets": [
         {
-          "expr": "lantern_github_latest_commit_info{service=~\"${service:regex}\"}",
+          "expr": "(last_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, snapshot, sha | kpi_kind=\"github_latest_commit_info\" | service_id=~\"${service:regex}\" | unwrap kpi_value | __error__=\"\" [15m]) by (service_id, snapshot, repository, sha)) and on (service_id, snapshot) topk by (service_id) (1, max_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, snapshot | kpi_kind=\"collector_snapshot\" | service_id=~\"${service:regex}\" | unwrap kpi_value | __error__=\"\" [15m]) by (service_id, snapshot))",
           "legendFormat": "",
-          "format": "table",
-          "instant": true,
-          "range": false,
+          "queryType": "instant",
           "datasource": {
-            "type": "prometheus",
-            "uid": "lantern-devops-prometheus"
+            "type": "loki",
+            "uid": "${loki}"
           },
+          "editorMode": "code",
           "refId": "A"
         }
       ],
       "transformations": [
         {
+          "id": "labelsToFields",
+          "options": {
+            "mode": "columns"
+          }
+        },
+        {
           "id": "organize",
           "options": {
             "excludeByName": {
               "Time": true,
-              "__name__": true,
-              "job": true,
-              "instance": true,
-              "endpoint": true,
-              "namespace": true,
-              "pod": true,
-              "container": true,
-              "deployment": true,
-              "squad": true,
+              "snapshot": true,
               "Value": true
             },
             "indexByName": {
-              "service": 0,
+              "service_id": 0,
               "repository": 1,
               "sha": 2
             }
@@ -279,8 +301,8 @@
       "title": "Last CI execution",
       "type": "table",
       "datasource": {
-        "type": "prometheus",
-        "uid": "lantern-devops-prometheus"
+        "type": "loki",
+        "uid": "${loki}"
       },
       "description": "",
       "gridPos": {
@@ -328,36 +350,33 @@
       },
       "targets": [
         {
-          "expr": "1000 * (lantern_ci_last_run_timestamp_seconds{service=~\"${service:regex}\"})",
+          "expr": "1000 * ((last_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, snapshot, status, sha, run_id | kpi_kind=\"ci_last_run_timestamp_seconds\" | service_id=~\"${service:regex}\" | unwrap kpi_value | __error__=\"\" [15m]) by (service_id, snapshot, repository, status, sha, run_id)) and on (service_id, snapshot) topk by (service_id) (1, max_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, snapshot | kpi_kind=\"collector_snapshot\" | service_id=~\"${service:regex}\" | unwrap kpi_value | __error__=\"\" [15m]) by (service_id, snapshot)))",
           "legendFormat": "",
-          "format": "table",
-          "instant": true,
-          "range": false,
+          "queryType": "instant",
           "datasource": {
-            "type": "prometheus",
-            "uid": "lantern-devops-prometheus"
+            "type": "loki",
+            "uid": "${loki}"
           },
+          "editorMode": "code",
           "refId": "A"
         }
       ],
       "transformations": [
         {
+          "id": "labelsToFields",
+          "options": {
+            "mode": "columns"
+          }
+        },
+        {
           "id": "organize",
           "options": {
             "excludeByName": {
               "Time": true,
-              "__name__": true,
-              "job": true,
-              "instance": true,
-              "endpoint": true,
-              "namespace": true,
-              "pod": true,
-              "container": true,
-              "deployment": true,
-              "squad": true
+              "snapshot": true
             },
             "indexByName": {
-              "service": 0,
+              "service_id": 0,
               "repository": 1,
               "status": 2,
               "sha": 3,
@@ -373,10 +392,10 @@
       "title": "SonarQube Quality Gate",
       "type": "table",
       "datasource": {
-        "type": "prometheus",
-        "uid": "lantern-devops-prometheus"
+        "type": "loki",
+        "uid": "${loki}"
       },
-      "description": "Default-branch analysis. A missing project or gate yields no row.",
+      "description": "",
       "gridPos": {
         "w": 12,
         "h": 8,
@@ -392,38 +411,34 @@
       },
       "targets": [
         {
-          "expr": "lantern_sonar_gate_info{service=~\"${service:regex}\"}",
+          "expr": "(last_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, snapshot, status | kpi_kind=\"sonar_gate_info\" | service_id=~\"${service:regex}\" | unwrap kpi_value | __error__=\"\" [15m]) by (service_id, snapshot, status)) and on (service_id, snapshot) topk by (service_id) (1, max_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, snapshot | kpi_kind=\"collector_snapshot\" | service_id=~\"${service:regex}\" | unwrap kpi_value | __error__=\"\" [15m]) by (service_id, snapshot))",
           "legendFormat": "",
-          "format": "table",
-          "instant": true,
-          "range": false,
+          "queryType": "instant",
           "datasource": {
-            "type": "prometheus",
-            "uid": "lantern-devops-prometheus"
+            "type": "loki",
+            "uid": "${loki}"
           },
+          "editorMode": "code",
           "refId": "A"
         }
       ],
       "transformations": [
         {
+          "id": "labelsToFields",
+          "options": {
+            "mode": "columns"
+          }
+        },
+        {
           "id": "organize",
           "options": {
             "excludeByName": {
               "Time": true,
-              "__name__": true,
-              "job": true,
-              "instance": true,
-              "endpoint": true,
-              "namespace": true,
-              "pod": true,
-              "container": true,
-              "deployment": true,
-              "repository": true,
-              "squad": true,
+              "snapshot": true,
               "Value": true
             },
             "indexByName": {
-              "service": 0,
+              "service_id": 0,
               "status": 1
             }
           }
@@ -435,8 +450,8 @@
       "title": "SonarQube coverage",
       "type": "timeseries",
       "datasource": {
-        "type": "prometheus",
-        "uid": "lantern-devops-prometheus"
+        "type": "loki",
+        "uid": "${loki}"
       },
       "description": "",
       "gridPos": {
@@ -455,15 +470,14 @@
       },
       "targets": [
         {
-          "expr": "lantern_sonar_measure{service=~\"${service:regex}\",measure=\"coverage\"}",
-          "legendFormat": "{{service}}",
-          "format": "time_series",
-          "instant": false,
-          "range": true,
+          "expr": "last_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, measure | kpi_kind=\"sonar_measure\" | service_id=~\"${service:regex}\" | measure=~\"coverage\" | unwrap kpi_value | __error__=\"\" [15m]) by (service_id, measure)",
+          "legendFormat": "{{service_id}} · {{measure}}",
+          "queryType": "range",
           "datasource": {
-            "type": "prometheus",
-            "uid": "lantern-devops-prometheus"
+            "type": "loki",
+            "uid": "${loki}"
           },
+          "editorMode": "code",
           "refId": "A"
         }
       ],
@@ -473,8 +487,8 @@
       "title": "Published, promoted and running image metadata",
       "type": "table",
       "datasource": {
-        "type": "prometheus",
-        "uid": "lantern-devops-prometheus"
+        "type": "loki",
+        "uid": "${loki}"
       },
       "description": "",
       "gridPos": {
@@ -492,7 +506,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "service"
+              "options": "service_id"
             },
             "properties": [
               {
@@ -500,7 +514,7 @@
                 "value": [
                   {
                     "title": "Open service detail",
-                    "url": "/d/lantern-devops-service/lantern-service-detail?var-service=${__data.fields.service}&${__url_time_range}"
+                    "url": "/d/lantern-devops-service/lantern-service-detail?var-service=${__data.fields.service_id}&${__url_time_range}"
                   }
                 ]
               }
@@ -527,38 +541,34 @@
       },
       "targets": [
         {
-          "expr": "lantern_image_info{service=~\"${service:regex}\",stage=~\"latest_published|gitops|running\"}",
+          "expr": "(last_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, snapshot, stage, tag, digest, source_sha, evidence, registry_url | kpi_kind=\"image_info\" | service_id=~\"${service:regex}\" | stage=~\"latest_published|gitops|running\" | unwrap kpi_value | __error__=\"\" [15m]) by (service_id, snapshot, stage, tag, digest, source_sha, evidence, registry_url)) and on (service_id, snapshot) topk by (service_id) (1, max_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, snapshot | kpi_kind=\"collector_snapshot\" | service_id=~\"${service:regex}\" | unwrap kpi_value | __error__=\"\" [15m]) by (service_id, snapshot))",
           "legendFormat": "",
-          "format": "table",
-          "instant": true,
-          "range": false,
+          "queryType": "instant",
           "datasource": {
-            "type": "prometheus",
-            "uid": "lantern-devops-prometheus"
+            "type": "loki",
+            "uid": "${loki}"
           },
+          "editorMode": "code",
           "refId": "A"
         }
       ],
       "transformations": [
         {
+          "id": "labelsToFields",
+          "options": {
+            "mode": "columns"
+          }
+        },
+        {
           "id": "organize",
           "options": {
             "excludeByName": {
               "Time": true,
-              "__name__": true,
-              "job": true,
-              "instance": true,
-              "endpoint": true,
-              "namespace": true,
-              "pod": true,
-              "container": true,
-              "deployment": true,
-              "repository": true,
-              "squad": true,
+              "snapshot": true,
               "Value": true
             },
             "indexByName": {
-              "service": 0,
+              "service_id": 0,
               "stage": 1,
               "tag": 2,
               "digest": 3,
@@ -575,10 +585,10 @@
       "title": "Running pod images and readiness",
       "type": "table",
       "datasource": {
-        "type": "prometheus",
-        "uid": "lantern-devops-prometheus"
+        "type": "loki",
+        "uid": "${loki}"
       },
-      "description": "1 = pod and application container are Ready. A registry-qualified digest is required for comparison.",
+      "description": "1 = pod and application container are Ready. Digest comparisons require a registry-qualified digest.",
       "gridPos": {
         "w": 12,
         "h": 8,
@@ -594,37 +604,34 @@
       },
       "targets": [
         {
-          "expr": "lantern_running_container_info{service=~\"${service:regex}\"}",
+          "expr": "(last_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, snapshot, workload_pod, image, image_id, digest | kpi_kind=\"running_container_info\" | service_id=~\"${service:regex}\" | unwrap kpi_value | __error__=\"\" [15m]) by (service_id, snapshot, workload_pod, image, image_id, digest)) and on (service_id, snapshot) topk by (service_id) (1, max_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, snapshot | kpi_kind=\"collector_snapshot\" | service_id=~\"${service:regex}\" | unwrap kpi_value | __error__=\"\" [15m]) by (service_id, snapshot))",
           "legendFormat": "",
-          "format": "table",
-          "instant": true,
-          "range": false,
+          "queryType": "instant",
           "datasource": {
-            "type": "prometheus",
-            "uid": "lantern-devops-prometheus"
+            "type": "loki",
+            "uid": "${loki}"
           },
+          "editorMode": "code",
           "refId": "A"
         }
       ],
       "transformations": [
         {
+          "id": "labelsToFields",
+          "options": {
+            "mode": "columns"
+          }
+        },
+        {
           "id": "organize",
           "options": {
             "excludeByName": {
               "Time": true,
-              "__name__": true,
-              "job": true,
-              "instance": true,
-              "endpoint": true,
-              "namespace": true,
-              "container": true,
-              "deployment": true,
-              "repository": true,
-              "squad": true
+              "snapshot": true
             },
             "indexByName": {
-              "service": 0,
-              "pod": 1,
+              "service_id": 0,
+              "workload_pod": 1,
               "image": 2,
               "image_id": 3,
               "digest": 4,
@@ -639,8 +646,8 @@
       "title": "Argo CD application status",
       "type": "table",
       "datasource": {
-        "type": "prometheus",
-        "uid": "lantern-devops-prometheus"
+        "type": "loki",
+        "uid": "${loki}"
       },
       "description": "",
       "gridPos": {
@@ -658,38 +665,34 @@
       },
       "targets": [
         {
-          "expr": "lantern_argo_application_info{service=~\"${service:regex}\"}",
+          "expr": "(last_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, snapshot, health, sync, gitops_revision | kpi_kind=\"argo_application_info\" | service_id=~\"${service:regex}\" | unwrap kpi_value | __error__=\"\" [15m]) by (service_id, snapshot, health, sync, gitops_revision)) and on (service_id, snapshot) topk by (service_id) (1, max_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, snapshot | kpi_kind=\"collector_snapshot\" | service_id=~\"${service:regex}\" | unwrap kpi_value | __error__=\"\" [15m]) by (service_id, snapshot))",
           "legendFormat": "",
-          "format": "table",
-          "instant": true,
-          "range": false,
+          "queryType": "instant",
           "datasource": {
-            "type": "prometheus",
-            "uid": "lantern-devops-prometheus"
+            "type": "loki",
+            "uid": "${loki}"
           },
+          "editorMode": "code",
           "refId": "A"
         }
       ],
       "transformations": [
         {
+          "id": "labelsToFields",
+          "options": {
+            "mode": "columns"
+          }
+        },
+        {
           "id": "organize",
           "options": {
             "excludeByName": {
               "Time": true,
-              "__name__": true,
-              "job": true,
-              "instance": true,
-              "endpoint": true,
-              "namespace": true,
-              "pod": true,
-              "container": true,
-              "deployment": true,
-              "repository": true,
-              "squad": true,
+              "snapshot": true,
               "Value": true
             },
             "indexByName": {
-              "service": 0,
+              "service_id": 0,
               "health": 1,
               "sync": 2,
               "gitops_revision": 3
@@ -700,11 +703,11 @@
       "id": 8
     },
     {
-      "title": "Delivery assessment",
+      "title": "Release delivery assessment",
       "type": "table",
       "datasource": {
-        "type": "prometheus",
-        "uid": "lantern-devops-prometheus"
+        "type": "loki",
+        "uid": "${loki}"
       },
       "description": "",
       "gridPos": {
@@ -718,42 +721,56 @@
         "defaults": {
           "noValue": "Unavailable"
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "service_id"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Open service detail",
+                    "url": "/d/lantern-devops-service/lantern-service-detail?var-service=${__data.fields.service_id}&${__url_time_range}"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
       },
       "targets": [
         {
-          "expr": "lantern_delivery_assessment_info{service=~\"${service:regex}\"}",
+          "expr": "(last_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, snapshot, status | kpi_kind=\"delivery_assessment_info\" | service_id=~\"${service:regex}\" | unwrap kpi_value | __error__=\"\" [15m]) by (service_id, snapshot, status)) and on (service_id, snapshot) topk by (service_id) (1, max_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, snapshot | kpi_kind=\"collector_snapshot\" | service_id=~\"${service:regex}\" | unwrap kpi_value | __error__=\"\" [15m]) by (service_id, snapshot))",
           "legendFormat": "",
-          "format": "table",
-          "instant": true,
-          "range": false,
+          "queryType": "instant",
           "datasource": {
-            "type": "prometheus",
-            "uid": "lantern-devops-prometheus"
+            "type": "loki",
+            "uid": "${loki}"
           },
+          "editorMode": "code",
           "refId": "A"
         }
       ],
       "transformations": [
         {
+          "id": "labelsToFields",
+          "options": {
+            "mode": "columns"
+          }
+        },
+        {
           "id": "organize",
           "options": {
             "excludeByName": {
               "Time": true,
-              "__name__": true,
-              "job": true,
-              "instance": true,
-              "endpoint": true,
-              "namespace": true,
-              "pod": true,
-              "container": true,
-              "deployment": true,
-              "repository": true,
-              "squad": true,
+              "snapshot": true,
               "Value": true
             },
             "indexByName": {
-              "service": 0,
+              "service_id": 0,
               "status": 1
             }
           }
@@ -765,8 +782,8 @@
       "title": "Desired and available replicas",
       "type": "timeseries",
       "datasource": {
-        "type": "prometheus",
-        "uid": "lantern-devops-prometheus"
+        "type": "loki",
+        "uid": "${loki}"
       },
       "description": "",
       "gridPos": {
@@ -784,28 +801,15 @@
       },
       "targets": [
         {
-          "expr": "kube_deployment_spec_replicas{namespace=~\"${service:regex}\",deployment=~\"api|player-api|frontend-game|frontend-public\"}",
-          "legendFormat": "{{namespace}} desired",
-          "format": "time_series",
-          "instant": false,
-          "range": true,
+          "expr": "last_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, measure | kpi_kind=\"workload_measure\" | service_id=~\"${service:regex}\" | measure=~\"desired|available\" | unwrap kpi_value | __error__=\"\" [10m]) by (service_id, measure)",
+          "legendFormat": "{{service_id}} · {{measure}}",
+          "queryType": "range",
           "datasource": {
-            "type": "prometheus",
-            "uid": "lantern-devops-prometheus"
+            "type": "loki",
+            "uid": "${loki}"
           },
+          "editorMode": "code",
           "refId": "A"
-        },
-        {
-          "expr": "kube_deployment_status_replicas_available{namespace=~\"${service:regex}\",deployment=~\"api|player-api|frontend-game|frontend-public\"}",
-          "legendFormat": "{{namespace}} available",
-          "format": "time_series",
-          "instant": false,
-          "range": true,
-          "datasource": {
-            "type": "prometheus",
-            "uid": "lantern-devops-prometheus"
-          },
-          "refId": "B"
         }
       ],
       "id": 10
@@ -814,10 +818,10 @@
       "title": "CPU usage, requests and limits",
       "type": "timeseries",
       "datasource": {
-        "type": "prometheus",
-        "uid": "lantern-devops-prometheus"
+        "type": "loki",
+        "uid": "${loki}"
       },
-      "description": "Application containers. Requests and limits are omitted when unset.",
+      "description": "Usage comes from the K3s resource metrics API. Requests and limits describe the desired replicas.",
       "gridPos": {
         "w": 12,
         "h": 8,
@@ -834,40 +838,15 @@
       },
       "targets": [
         {
-          "expr": "sum by (namespace) (rate(container_cpu_usage_seconds_total{namespace=~\"${service:regex}\",container=~\"api|player-api|frontend-game|frontend-public\",image!=\"\"}[$__rate_interval]))",
-          "legendFormat": "{{namespace}} usage",
-          "format": "time_series",
-          "instant": false,
-          "range": true,
+          "expr": "last_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, dimension, resource | kpi_kind=\"resource_measure\" | service_id=~\"${service:regex}\" | resource=\"cpu\" | unwrap kpi_value | __error__=\"\" [10m]) by (service_id, dimension)",
+          "legendFormat": "{{service_id}} · {{dimension}}",
+          "queryType": "range",
           "datasource": {
-            "type": "prometheus",
-            "uid": "lantern-devops-prometheus"
+            "type": "loki",
+            "uid": "${loki}"
           },
+          "editorMode": "code",
           "refId": "A"
-        },
-        {
-          "expr": "sum by (namespace) (kube_pod_container_resource_requests{namespace=~\"${service:regex}\",container=~\"api|player-api|frontend-game|frontend-public\",resource=\"cpu\"})",
-          "legendFormat": "{{namespace}} requests",
-          "format": "time_series",
-          "instant": false,
-          "range": true,
-          "datasource": {
-            "type": "prometheus",
-            "uid": "lantern-devops-prometheus"
-          },
-          "refId": "B"
-        },
-        {
-          "expr": "sum by (namespace) (kube_pod_container_resource_limits{namespace=~\"${service:regex}\",container=~\"api|player-api|frontend-game|frontend-public\",resource=\"cpu\"})",
-          "legendFormat": "{{namespace}} limits",
-          "format": "time_series",
-          "instant": false,
-          "range": true,
-          "datasource": {
-            "type": "prometheus",
-            "uid": "lantern-devops-prometheus"
-          },
-          "refId": "C"
         }
       ],
       "id": 11
@@ -876,10 +855,10 @@
       "title": "Memory usage, requests and limits",
       "type": "timeseries",
       "datasource": {
-        "type": "prometheus",
-        "uid": "lantern-devops-prometheus"
+        "type": "loki",
+        "uid": "${loki}"
       },
-      "description": "Application containers. Requests and limits are omitted when unset.",
+      "description": "Usage comes from the K3s resource metrics API. Requests and limits describe the desired replicas.",
       "gridPos": {
         "w": 12,
         "h": 8,
@@ -896,40 +875,15 @@
       },
       "targets": [
         {
-          "expr": "sum by (namespace) (container_memory_working_set_bytes{namespace=~\"${service:regex}\",container=~\"api|player-api|frontend-game|frontend-public\",image!=\"\"})",
-          "legendFormat": "{{namespace}} usage",
-          "format": "time_series",
-          "instant": false,
-          "range": true,
+          "expr": "last_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, dimension, resource | kpi_kind=\"resource_measure\" | service_id=~\"${service:regex}\" | resource=\"memory\" | unwrap kpi_value | __error__=\"\" [10m]) by (service_id, dimension)",
+          "legendFormat": "{{service_id}} · {{dimension}}",
+          "queryType": "range",
           "datasource": {
-            "type": "prometheus",
-            "uid": "lantern-devops-prometheus"
+            "type": "loki",
+            "uid": "${loki}"
           },
+          "editorMode": "code",
           "refId": "A"
-        },
-        {
-          "expr": "sum by (namespace) (kube_pod_container_resource_requests{namespace=~\"${service:regex}\",container=~\"api|player-api|frontend-game|frontend-public\",resource=\"memory\"})",
-          "legendFormat": "{{namespace}} requests",
-          "format": "time_series",
-          "instant": false,
-          "range": true,
-          "datasource": {
-            "type": "prometheus",
-            "uid": "lantern-devops-prometheus"
-          },
-          "refId": "B"
-        },
-        {
-          "expr": "sum by (namespace) (kube_pod_container_resource_limits{namespace=~\"${service:regex}\",container=~\"api|player-api|frontend-game|frontend-public\",resource=\"memory\"})",
-          "legendFormat": "{{namespace}} limits",
-          "format": "time_series",
-          "instant": false,
-          "range": true,
-          "datasource": {
-            "type": "prometheus",
-            "uid": "lantern-devops-prometheus"
-          },
-          "refId": "C"
         }
       ],
       "id": 12
@@ -938,10 +892,10 @@
       "title": "Source availability",
       "type": "table",
       "datasource": {
-        "type": "prometheus",
-        "uid": "lantern-devops-prometheus"
+        "type": "loki",
+        "uid": "${loki}"
       },
-      "description": "1 = source responded, 0 = unavailable or not configured. Empty = no fresh collector sample.",
+      "description": "1 = source responded, 0 = unavailable or unconfigured. Empty = no fresh observation.",
       "gridPos": {
         "w": 12,
         "h": 8,
@@ -957,37 +911,33 @@
       },
       "targets": [
         {
-          "expr": "lantern_source_available{service=~\"${service:regex}\"}",
+          "expr": "(last_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, snapshot, source | kpi_kind=\"source_available\" | service_id=~\"${service:regex}\" | unwrap kpi_value | __error__=\"\" [15m]) by (service_id, snapshot, source)) and on (service_id, snapshot) topk by (service_id) (1, max_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, snapshot | kpi_kind=\"collector_snapshot\" | service_id=~\"${service:regex}\" | unwrap kpi_value | __error__=\"\" [15m]) by (service_id, snapshot))",
           "legendFormat": "",
-          "format": "table",
-          "instant": true,
-          "range": false,
+          "queryType": "instant",
           "datasource": {
-            "type": "prometheus",
-            "uid": "lantern-devops-prometheus"
+            "type": "loki",
+            "uid": "${loki}"
           },
+          "editorMode": "code",
           "refId": "A"
         }
       ],
       "transformations": [
         {
+          "id": "labelsToFields",
+          "options": {
+            "mode": "columns"
+          }
+        },
+        {
           "id": "organize",
           "options": {
             "excludeByName": {
               "Time": true,
-              "__name__": true,
-              "job": true,
-              "instance": true,
-              "endpoint": true,
-              "namespace": true,
-              "pod": true,
-              "container": true,
-              "deployment": true,
-              "repository": true,
-              "squad": true
+              "snapshot": true
             },
             "indexByName": {
-              "service": 0,
+              "service_id": 0,
               "source": 1,
               "Value": 2
             }
@@ -1003,7 +953,7 @@
         "type": "loki",
         "uid": "${loki}"
       },
-      "description": "Matches log text for error and warning severity tokens. Select the existing Kubernetes Loki datasource.",
+      "description": "",
       "gridPos": {
         "w": 24,
         "h": 10,
@@ -1031,6 +981,7 @@
             "type": "loki",
             "uid": "${loki}"
           },
+          "editorMode": "code",
           "refId": "A"
         }
       ],
