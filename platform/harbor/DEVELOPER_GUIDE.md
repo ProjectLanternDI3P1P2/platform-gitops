@@ -19,7 +19,7 @@ Before logging in, a workstation must:
 3. have Docker, Podman or another OCI-compatible client installed;
 4. have a named Harbor account or a scoped robot-account credential.
 
-Do not use the Harbor `admin` account for application builds or CI. Do not
+Do not use the Harbor `admin` account for application builds, CI or day-to-day checks. Do not
 disable TLS verification globally and do not commit registry passwords, robot
 tokens or Docker authentication files.
 
@@ -28,23 +28,26 @@ nonstandard port and must be used exactly as documented.
 
 ## Image naming convention
 
-Application images use the shared private `lantern` project and an immutable
-tag:
+Application images use the shared private `lantern` project. The CD pipeline
+publishes them; the name is the repository of the service:
 
 ```text
-10.4.111.200:18443/lantern/<service>:<git-sha>
+10.4.111.200:18443/lantern/<repository>:<tag>
 ```
 
-Examples:
+Examples (real repositories of the project):
 
 ```text
-10.4.111.200:18443/lantern/player:47e129f
-10.4.111.200:18443/lantern/combat:a12bc34
-10.4.111.200:18443/lantern/frontend-game:2026.10.01-7f31d9a
+10.4.111.200:18443/lantern/dungeon-backend:v2.5.0
+10.4.111.200:18443/lantern/combat-backend:v1.2.0
+10.4.111.200:18443/lantern/player-backend:v1.6.0
 ```
 
-Do not deploy `latest`. A release tag may be added for human readability, but
-Kubernetes manifests should ultimately pin the image digest.
+A release tag `vX.Y.Z` is what gets deployed. Builds from `main` are tagged
+`main-<sha>` and `main-latest`: they are for testing only, never reference them
+in a deployment. The pipeline resolves the digest of the image and the GitOps
+overlay pins it next to the tag, so what runs is exactly what was scanned and
+signed.
 
 ## Login
 
@@ -67,26 +70,22 @@ Never print either environment variable.
 
 ## Build and push
 
-From a service repository:
+Do not push images by hand for a deployment. Since 2026-11-27 Harbor refuses to
+serve an image that is not signed (see "Scan, signature and blocking" below), so
+a manual push cannot be deployed. The supported path is:
 
-```powershell
-$service = "player"
-$tag = (git rev-parse --short=7 HEAD)
-$image = "10.4.111.200:18443/lantern/${service}:${tag}"
+1. merge the release pull request of the service (release-please creates the
+   `vX.Y.Z` tag);
+2. the shared workflow builds, scans, signs and pushes the image, then asks
+   `platform-gitops` to promote it;
+3. a promotion pull request `deploy(<application>): vX.Y.Z` is merged
+   automatically once "Validate GitOps" passes, and Argo CD deploys it.
 
-docker build --pull --tag $image .
-docker push $image
-```
+Details: [application delivery](../../_docs/technical/application-delivery.md).
+CI must not run `kubectl apply` or `helm upgrade` against the production cluster.
 
-Record the immutable digest returned by the registry:
-
-```powershell
-docker inspect --format='{{index .RepoDigests 0}}' $image
-```
-
-Update the GitOps repository through a pull request. CI builds and pushes the
-image; Argo CD deploys the reviewed Git change. CI must not run `kubectl apply`
-or `helm upgrade` against the production cluster.
+A manual `docker build` and `docker push` is still fine for a local test on a
+temporary project, never on `lantern`.
 
 ## Pull from K3s
 
@@ -95,11 +94,33 @@ The target namespace also needs a registry credential Secret, referenced by the
 workload through `imagePullSecrets`. Create that Secret through the approved
 secret-management workflow; never commit a Kubernetes Secret manifest.
 
-## Vulnerability scanning
+## Scan, signature and blocking
 
-Trivy scanning is enabled. A successful push does not mean an image is approved
-for deployment. Review the Harbor scan results and follow the project's policy
-for `HIGH` and `CRITICAL` findings before updating GitOps.
+Harbor scans every push (Trivy) and generates an SBOM. Two controls are enforced
+on the `lantern` project on every pull, including the one made by the cluster:
+
+| Control | Rule | What you see when it blocks |
+|---|---|---|
+| Signature | The image must be signed with cosign by the CI | `HTTP 412 PROJECTPOLICYVIOLATION: The image is not signed by cosign.` |
+| Vulnerabilities | No CRITICAL finding | `HTTP 412 PROJECTPOLICYVIOLATION` with the number of CRITICAL vulnerabilities |
+
+Harbor checks the signature first, so an image that is both unsigned and
+vulnerable only reports the signature.
+
+If a pod is in `ImagePullBackOff` with an HTTP 412 event, open the artifact in
+Harbor: the **Signed** and **Vulnerabilities** columns give the reason. To fix
+it:
+
+- unsigned image: publish a `vX.Y.Z` release through the shared workflow;
+- CRITICAL vulnerability: update the dependency or the base image, then publish
+  a new release (the pipeline also refuses to sign an image with CRITICAL
+  findings);
+- urgent case: ask for a documented exception (7 days maximum, approved by the
+  Security team). See the
+  [runbook](../../_docs/technical/image-admission-runbook.md), section 5.
+
+Running pods keep running; the problem appears when a pod is restarted or
+rescheduled, so check the images of your service before the next deployment.
 
 ## Getting help
 
