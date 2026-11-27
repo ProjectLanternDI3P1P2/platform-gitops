@@ -1,0 +1,14 @@
+Politique	Objectif	Priorité proposée
+
+Disallow privileged containers	Interdire les conteneurs privilégiés	Critique
+
+Require non-root user	Interdire l'exécution en root	Critique
+Disallow privilege escalation	Empêcher l'élévation de privilèges	Critique
+Restrict image registries	Autoriser uniquement les registres approuvés	Critique
+Disallow hostPath	Interdire le montage direct des fichiers de l'hôte	Critique
+Disallow host namespaces	Interdire hostNetwork, hostPID et hostIPC	Critique
+Require resource limits	Imposer des limites CPU et mémoire	Haute
+Disallow latest tag	Interdire les tags latest ou implicites	Haute
+Require seccomp profile	Limiter les appels système	Haute
+Require read-only root filesystem	Interdire l'écriture sur le système de fichiers racine	Haute
+Require mandatory labels	Assurer la traçabilité des applications	Moyenne
