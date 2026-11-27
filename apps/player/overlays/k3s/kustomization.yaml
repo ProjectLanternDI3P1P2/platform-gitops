@@ -21,8 +21,8 @@ patches:
 # Déployer une nouvelle version = changer le tag. Toujours un tag fixe (vX.Y.Z), jamais "latest".
 images:
   - name: 10.4.111.200:18443/lantern/player-backend
-    newTag: v1.6.0
-    digest: sha256:2248cc0c392f1af765e3e6e4ad6d41784b7503b2f3e1b503d2de3c89cc230dbd
+    newTag: v1.6.2
+    digest: sha256:5c135abb4f3cb7ccec4ec06c24469543f1111e6d926df75b2aaebeba36500f7f
 
 # Run after this overlay's patches so the migration targets the same schema.
 replacements:
