@@ -9,4 +9,5 @@ resources:
 
 images:
   - name: 10.4.111.200:18443/lantern/frontend-public
-    newTag: main-latest
+    newTag: v0.2.0
+    digest: sha256:740c320dac44c3752d1fa670f854699ccd5be2e8045562e98df2c7f72808bff7
