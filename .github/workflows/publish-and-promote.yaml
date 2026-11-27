@@ -163,26 +163,33 @@ jobs:
           secrets: |
             github_packages_credentials=Username=${{ github.actor }};Password=${{ github.token }};ValidAuthenticationTypes=Basic
 
-      - name: Verify published image
-        shell: bash
-        env:
-          TAGS: ${{ steps.image.outputs.tags }}
-        run: |
-          set -euo pipefail
-          while IFS= read -r tag; do
-            docker buildx imagetools inspect "$tag" >/dev/null
-            echo "Verified ${tag}"
-          done <<< "${TAGS}"
-
+      # Since 2026-11-27 the lantern project refuses to serve (HTTP 412) an image that is not signed
+      # or not yet scanned. A freshly pushed image is neither, so nothing may pull it before the
+      # signature: the digest is read from the Harbor API (not subject to the pull policies) and the
+      # pull check runs at the end, once the image is scanned and signed.
       - name: Resolve image digest
         id: digest
         shell: bash
         env:
           TAGS: ${{ steps.image.outputs.tags }}
+          HARBOR_USERNAME: ${{ secrets.HARBOR_USERNAME }}
+          HARBOR_TOKEN: ${{ secrets.HARBOR_TOKEN }}
         run: |
           set -euo pipefail
+          command -v jq >/dev/null || { echo "jq is required on the runner" >&2; exit 1; }
+          repository="${IMAGE#"${REGISTRY}"/lantern/}"
           first_tag="$(printf '%s\n' "${TAGS}" | head -n1)"
-          digest="$(docker buildx imagetools inspect "${first_tag}" --format '{{ .Manifest.Digest }}')"
+          reference="${first_tag##*:}"
+          url="https://${REGISTRY}/api/v2.0/projects/lantern/repositories/${repository}/artifacts/${reference}"
+          digest=""
+          for attempt in $(seq 1 6); do
+            if json="$(curl --fail-with-body -sS -u "${HARBOR_USERNAME}:${HARBOR_TOKEN}" "${url}")"; then
+              digest="$(jq -r '.digest // empty' <<< "${json}")"
+              [[ -n "${digest}" ]] && break
+            fi
+            echo "Artifact ${repository}:${reference} not visible yet (attempt ${attempt}/6)"
+            sleep 5
+          done
           if [[ ! "${digest}" =~ ^sha256:[0-9a-f]{64}$ ]]; then
             echo "Could not resolve a valid digest for ${first_tag}" >&2
             exit 1
@@ -306,6 +313,24 @@ jobs:
             | jq -e --arg sha "${GITHUB_SHA}" '.predicateType == "https://slsa.dev/provenance/v0.2" and .predicate.materials[0].digest.sha1 == $sha' >/dev/null
           echo "Provenance verified for ${IMAGE}@${DIGEST}"
           rm -f cosign.pub
+
+      # Pull check, last: the image is now scanned and signed, so Harbor must serve it exactly as it
+      # will serve the cluster. Every tag must point to the digest that was scanned and signed.
+      - name: Verify published image
+        shell: bash
+        env:
+          TAGS: ${{ steps.image.outputs.tags }}
+          DIGEST: ${{ steps.digest.outputs.digest }}
+        run: |
+          set -euo pipefail
+          while IFS= read -r tag; do
+            served="$(docker buildx imagetools inspect "${tag}" --format '{{ .Manifest.Digest }}')"
+            if [[ "${served}" != "${DIGEST}" ]]; then
+              echo "${tag} resolves to ${served}, expected ${DIGEST}" >&2
+              exit 1
+            fi
+            echo "Verified ${tag} (${served})"
+          done <<< "${TAGS}"
 
       - name: Request GitOps promotion
         if: github.ref_type == 'tag'
