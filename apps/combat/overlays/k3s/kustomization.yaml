@@ -16,8 +16,8 @@ patches:
 images:
   - name: 10.4.111.200:18443/lantern/backend
     newName: 10.4.111.200:18443/lantern/combat-backend
-    newTag: v1.2.0
-    digest: sha256:469392503491356fd0f8bba95a96c2266989e39fdf42b7e09db8104328670e92
+    newTag: v1.2.1
+    digest: sha256:0787ecde40be93e587d7ff9fd71ae43b6a4c6e8dbed547a41692f07e46471971
 
 # Run after this overlay's patches so the migration targets the same schema.
 replacements:
