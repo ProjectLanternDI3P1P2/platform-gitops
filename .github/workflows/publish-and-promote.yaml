@@ -135,33 +135,42 @@ jobs:
         with:
           name: prebuilt-image-${{ github.run_id }}
 
-      - name: Load, tag and push prebuilt image
+      - name: Load prebuilt image
         if: ${{ inputs.prebuild_on_github }}
         shell: bash
-        env:
-          TAGS: ${{ steps.image.outputs.tags }}
         run: |
           set -euo pipefail
           gzip -dc prebuilt-image.tar.gz | docker load
-          while IFS= read -r tag; do
-            docker tag "lantern-prebuilt:${GITHUB_SHA}" "${tag}"
-            docker push "${tag}"
-          done <<< "${TAGS}"
 
-      - name: Build and push
+      # Build into the local Docker image store only. With push: true, buildx reads the manifest back
+      # from Harbor right after the push to report its digest; since 2026-11-27 Harbor refuses that
+      # read (HTTP 412, "The image is not signed by cosign") because the image is not signed yet, and
+      # the release fails (reward-backend v1.4.0). The plain docker push below does not read it back.
+      - name: Build image
         if: ${{ inputs.prebuild_on_github == false }}
         uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           context: .
           platforms: linux/amd64
-          push: true
-          tags: ${{ steps.image.outputs.tags }}
+          load: true
+          tags: lantern-prebuilt:${{ github.sha }}
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
           build-args: ${{ inputs.build_args }}
           secrets: |
             github_packages_credentials=Username=${{ github.actor }};Password=${{ github.token }};ValidAuthenticationTypes=Basic
+
+      - name: Tag and push image
+        shell: bash
+        env:
+          TAGS: ${{ steps.image.outputs.tags }}
+        run: |
+          set -euo pipefail
+          while IFS= read -r tag; do
+            docker tag "lantern-prebuilt:${GITHUB_SHA}" "${tag}"
+            docker push "${tag}"
+          done <<< "${TAGS}"
 
       # Since 2026-11-27 the lantern project refuses to serve (HTTP 412) an image that is not signed
       # or not yet scanned. A freshly pushed image is neither, so nothing may pull it before the
