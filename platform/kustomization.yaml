@@ -12,3 +12,4 @@ resources:
   - argocd/applications/rabbitmq.yaml
   - argocd/applications/cert-manager.yaml
   - argocd/applications/plugin-barman-cloud.yaml
+  - argocd/applications/devops-kpis.yaml

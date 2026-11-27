@@ -1,0 +1,4 @@
+lantern_kpi_provisioning_dir: /etc/grafana/provisioning
+lantern_kpi_dashboard_dir: /var/lib/grafana/lantern-devops-dashboards
+lantern_kpi_grafana_group: grafana
+lantern_kpi_grafana_service: grafana-server

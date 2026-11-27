@@ -1,0 +1,11 @@
+apiVersion: 1
+providers:
+  - name: lantern-devops
+    orgId: 1
+    folder: Lantern DevOps
+    folderUid: lantern-devops
+    type: file
+    allowUiUpdates: false
+    updateIntervalSeconds: 30
+    options:
+      path: {{ lantern_kpi_dashboard_dir | to_json }}

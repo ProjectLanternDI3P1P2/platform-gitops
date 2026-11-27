@@ -1,0 +1,55 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: lantern-kpi-collector
+  namespace: monitoring
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lantern-kpi-collector
+  namespace: monitoring
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: lantern-kpi-collector
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: lantern-kpi-collector
+    spec:
+      serviceAccountName: lantern-kpi-collector
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: lantern-kpi-collector
+          image: docker.io/library/python:3.13.13-slim-bookworm@sha256:355bfa66770995d7e9a0da4b3473b44d0cb451f6b56f5615ad9c39e3c4eca03f
+          command: [python3, -B, -u, /app/collector.py]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests: {cpu: 50m, memory: 64Mi}
+            limits: {cpu: 250m, memory: 192Mi}
+          volumeMounts:
+            - {name: code, mountPath: /app, readOnly: true}
+            - {name: credentials, mountPath: /credentials, readOnly: true}
+      volumes:
+        - name: code
+          configMap:
+            name: lantern-kpi-collector
+        - name: credentials
+          secret:
+            secretName: lantern-kpi-api
+            optional: true
+            defaultMode: 0440

@@ -1,0 +1,33 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: lantern-observability-k3s
+  namespace: argocd
+spec:
+  description: Read-only deployment and delivery observability
+  sourceRepos:
+    - https://github.com/ProjectLanternDI3P1P2/platform-gitops.git
+  destinations:
+    - namespace: argocd
+      server: https://kubernetes.default.svc
+    - namespace: monitoring
+      server: https://kubernetes.default.svc
+    - namespace: combat
+      server: https://kubernetes.default.svc
+    - namespace: dungeon
+      server: https://kubernetes.default.svc
+    - namespace: frontend-game
+      server: https://kubernetes.default.svc
+    - namespace: frontend-public
+      server: https://kubernetes.default.svc
+    - namespace: leaderboard
+      server: https://kubernetes.default.svc
+    - namespace: player
+      server: https://kubernetes.default.svc
+    - namespace: rewards
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRole
+  orphanedResources:
+    warn: true

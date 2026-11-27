@@ -1,0 +1,599 @@
+{
+  "uid": "lantern-devops-health",
+  "title": "Lantern · Kubernetes & Microservices Health",
+  "tags": [
+    "Lantern",
+    "DevOps"
+  ],
+  "schemaVersion": 39,
+  "editable": false,
+  "refresh": "5m",
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "timezone": "browser",
+  "links": [
+    {
+      "type": "dashboards",
+      "title": "Lantern DevOps",
+      "tags": [
+        "Lantern"
+      ],
+      "keepTime": true,
+      "asDropdown": true
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "loki",
+        "label": "Kubernetes Loki",
+        "type": "datasource",
+        "query": "loki",
+        "refresh": 1,
+        "multi": false,
+        "includeAll": false,
+        "options": []
+      },
+      {
+        "name": "service",
+        "label": "Service",
+        "type": "custom",
+        "query": "combat,dungeon,frontend-game,frontend-public,leaderboard,player,rewards",
+        "multi": true,
+        "includeAll": true,
+        "allValue": "combat|dungeon|frontend-game|frontend-public|leaderboard|player|rewards",
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "options": [
+          {
+            "text": "combat",
+            "value": "combat",
+            "selected": false
+          },
+          {
+            "text": "dungeon",
+            "value": "dungeon",
+            "selected": false
+          },
+          {
+            "text": "frontend-game",
+            "value": "frontend-game",
+            "selected": false
+          },
+          {
+            "text": "frontend-public",
+            "value": "frontend-public",
+            "selected": false
+          },
+          {
+            "text": "leaderboard",
+            "value": "leaderboard",
+            "selected": false
+          },
+          {
+            "text": "player",
+            "value": "player",
+            "selected": false
+          },
+          {
+            "text": "rewards",
+            "value": "rewards",
+            "selected": false
+          }
+        ]
+      }
+    ]
+  },
+  "panels": [
+    {
+      "title": "Workload rollout status",
+      "type": "table",
+      "datasource": {
+        "type": "loki",
+        "uid": "${loki}"
+      },
+      "description": "",
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 0,
+        "y": 0
+      },
+      "options": {},
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Unavailable"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "service_id"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Open service detail",
+                    "url": "/d/lantern-devops-service/lantern-service-detail?var-service=${__data.fields.service_id}&${__url_time_range}"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "expr": "(last_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, snapshot, status | kpi_kind=\"workload_rollout_info\" | service_id=~\"${service:regex}\" | unwrap kpi_value | __error__=\"\" [15m]) by (service_id, snapshot, status)) and on (service_id, snapshot) topk by (service_id) (1, max_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, snapshot | kpi_kind=\"collector_snapshot\" | service_id=~\"${service:regex}\" | unwrap kpi_value | __error__=\"\" [15m]) by (service_id, snapshot))",
+          "legendFormat": "",
+          "queryType": "instant",
+          "datasource": {
+            "type": "loki",
+            "uid": "${loki}"
+          },
+          "editorMode": "code",
+          "refId": "A"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "options": {
+            "mode": "columns"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "snapshot": true,
+              "Value": true
+            },
+            "indexByName": {
+              "service_id": 0,
+              "status": 1
+            }
+          }
+        }
+      ],
+      "id": 1
+    },
+    {
+      "title": "Argo CD application status",
+      "type": "table",
+      "datasource": {
+        "type": "loki",
+        "uid": "${loki}"
+      },
+      "description": "",
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 12,
+        "y": 0
+      },
+      "options": {},
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Unavailable"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "(last_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, snapshot, health, sync, gitops_revision | kpi_kind=\"argo_application_info\" | service_id=~\"${service:regex}\" | unwrap kpi_value | __error__=\"\" [15m]) by (service_id, snapshot, health, sync, gitops_revision)) and on (service_id, snapshot) topk by (service_id) (1, max_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, snapshot | kpi_kind=\"collector_snapshot\" | service_id=~\"${service:regex}\" | unwrap kpi_value | __error__=\"\" [15m]) by (service_id, snapshot))",
+          "legendFormat": "",
+          "queryType": "instant",
+          "datasource": {
+            "type": "loki",
+            "uid": "${loki}"
+          },
+          "editorMode": "code",
+          "refId": "A"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "options": {
+            "mode": "columns"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "snapshot": true,
+              "Value": true
+            },
+            "indexByName": {
+              "service_id": 0,
+              "health": 1,
+              "sync": 2,
+              "gitops_revision": 3
+            }
+          }
+        }
+      ],
+      "id": 2
+    },
+    {
+      "title": "Desired and available replicas",
+      "type": "timeseries",
+      "datasource": {
+        "type": "loki",
+        "uid": "${loki}"
+      },
+      "description": "",
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 0,
+        "y": 8
+      },
+      "options": {},
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Unavailable"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "last_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, measure | kpi_kind=\"workload_measure\" | service_id=~\"${service:regex}\" | measure=~\"desired|available\" | unwrap kpi_value | __error__=\"\" [10m]) by (service_id, measure)",
+          "legendFormat": "{{service_id}} · {{measure}}",
+          "queryType": "range",
+          "datasource": {
+            "type": "loki",
+            "uid": "${loki}"
+          },
+          "editorMode": "code",
+          "refId": "A"
+        }
+      ],
+      "id": 3
+    },
+    {
+      "title": "Ready and observed application pods",
+      "type": "timeseries",
+      "datasource": {
+        "type": "loki",
+        "uid": "${loki}"
+      },
+      "description": "",
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 12,
+        "y": 8
+      },
+      "options": {},
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Unavailable"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "last_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, measure | kpi_kind=\"workload_measure\" | service_id=~\"${service:regex}\" | measure=~\"ready_pods|active_pods\" | unwrap kpi_value | __error__=\"\" [10m]) by (service_id, measure)",
+          "legendFormat": "{{service_id}} · {{measure}}",
+          "queryType": "range",
+          "datasource": {
+            "type": "loki",
+            "uid": "${loki}"
+          },
+          "editorMode": "code",
+          "refId": "A"
+        }
+      ],
+      "id": 4
+    },
+    {
+      "title": "Restart count in active application containers",
+      "type": "timeseries",
+      "datasource": {
+        "type": "loki",
+        "uid": "${loki}"
+      },
+      "description": "",
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 0,
+        "y": 16
+      },
+      "options": {},
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Unavailable"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "last_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, measure | kpi_kind=\"workload_measure\" | service_id=~\"${service:regex}\" | measure=~\"active_container_restarts\" | unwrap kpi_value | __error__=\"\" [10m]) by (service_id, measure)",
+          "legendFormat": "{{service_id}} · {{measure}}",
+          "queryType": "range",
+          "datasource": {
+            "type": "loki",
+            "uid": "${loki}"
+          },
+          "editorMode": "code",
+          "refId": "A"
+        }
+      ],
+      "id": 5
+    },
+    {
+      "title": "Containers in CrashLoopBackOff",
+      "type": "timeseries",
+      "datasource": {
+        "type": "loki",
+        "uid": "${loki}"
+      },
+      "description": "",
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 12,
+        "y": 16
+      },
+      "options": {},
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Unavailable"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "last_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, measure | kpi_kind=\"workload_measure\" | service_id=~\"${service:regex}\" | measure=~\"crashloop_containers\" | unwrap kpi_value | __error__=\"\" [10m]) by (service_id, measure)",
+          "legendFormat": "{{service_id}} · {{measure}}",
+          "queryType": "range",
+          "datasource": {
+            "type": "loki",
+            "uid": "${loki}"
+          },
+          "editorMode": "code",
+          "refId": "A"
+        }
+      ],
+      "id": 6
+    },
+    {
+      "title": "CPU usage, requests and limits",
+      "type": "timeseries",
+      "datasource": {
+        "type": "loki",
+        "uid": "${loki}"
+      },
+      "description": "Usage comes from the K3s resource metrics API. Requests and limits describe the desired replicas.",
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 0,
+        "y": 24
+      },
+      "options": {},
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Unavailable",
+          "unit": "suffix: cores"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "last_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, dimension, resource | kpi_kind=\"resource_measure\" | service_id=~\"${service:regex}\" | resource=\"cpu\" | unwrap kpi_value | __error__=\"\" [10m]) by (service_id, dimension)",
+          "legendFormat": "{{service_id}} · {{dimension}}",
+          "queryType": "range",
+          "datasource": {
+            "type": "loki",
+            "uid": "${loki}"
+          },
+          "editorMode": "code",
+          "refId": "A"
+        }
+      ],
+      "id": 7
+    },
+    {
+      "title": "Memory usage, requests and limits",
+      "type": "timeseries",
+      "datasource": {
+        "type": "loki",
+        "uid": "${loki}"
+      },
+      "description": "Usage comes from the K3s resource metrics API. Requests and limits describe the desired replicas.",
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 12,
+        "y": 24
+      },
+      "options": {},
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Unavailable",
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "last_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, dimension, resource | kpi_kind=\"resource_measure\" | service_id=~\"${service:regex}\" | resource=\"memory\" | unwrap kpi_value | __error__=\"\" [10m]) by (service_id, dimension)",
+          "legendFormat": "{{service_id}} · {{dimension}}",
+          "queryType": "range",
+          "datasource": {
+            "type": "loki",
+            "uid": "${loki}"
+          },
+          "editorMode": "code",
+          "refId": "A"
+        }
+      ],
+      "id": 8
+    },
+    {
+      "title": "Application error and warning log lines",
+      "type": "timeseries",
+      "datasource": {
+        "type": "loki",
+        "uid": "${loki}"
+      },
+      "description": "",
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 0,
+        "y": 32
+      },
+      "options": {},
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Unavailable"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum by (namespace) (count_over_time({job=\"kubernetes-pods\",namespace=~\"${service:regex}\",container=~\"api|player-api|frontend-game|frontend-public\"} |~ \"(?i)(^|[[:space:]\\\"\\\\[])(error|err|fail|fatal|critical)([[:space:]\\\"\\\\]:,]|$)\" [$__interval]))",
+          "legendFormat": "{{namespace}} errors",
+          "queryType": "range",
+          "datasource": {
+            "type": "loki",
+            "uid": "${loki}"
+          },
+          "editorMode": "code",
+          "refId": "A"
+        },
+        {
+          "expr": "sum by (namespace) (count_over_time({job=\"kubernetes-pods\",namespace=~\"${service:regex}\",container=~\"api|player-api|frontend-game|frontend-public\"} |~ \"(?i)(^|[[:space:]\\\"\\\\[])(warn|warning)([[:space:]\\\"\\\\]:,]|$)\" [$__interval]))",
+          "legendFormat": "{{namespace}} warnings",
+          "queryType": "range",
+          "datasource": {
+            "type": "loki",
+            "uid": "${loki}"
+          },
+          "editorMode": "code",
+          "refId": "B"
+        }
+      ],
+      "id": 9
+    },
+    {
+      "title": "Application errors and warnings",
+      "type": "logs",
+      "datasource": {
+        "type": "loki",
+        "uid": "${loki}"
+      },
+      "description": "",
+      "gridPos": {
+        "w": 24,
+        "h": 10,
+        "x": 0,
+        "y": 40
+      },
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "wrapLogMessage": true,
+        "sortOrder": "Descending"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Unavailable"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "{job=\"kubernetes-pods\",namespace=~\"${service:regex}\",container=~\"api|player-api|frontend-game|frontend-public\"} |~ \"(?i)(^|[[:space:]\\\"\\\\[])(error|err|fail|fatal|critical)([[:space:]\\\"\\\\]:,]|$)|(?i)(^|[[:space:]\\\"\\\\[])(warn|warning)([[:space:]\\\"\\\\]:,]|$)\"",
+          "legendFormat": "",
+          "queryType": "range",
+          "datasource": {
+            "type": "loki",
+            "uid": "${loki}"
+          },
+          "editorMode": "code",
+          "refId": "A"
+        }
+      ],
+      "links": [
+        {
+          "title": "Open application logs in Explore",
+          "url": "/explore?schemaVersion=1&panes=%7B%22logs%22%3A%7B%22datasource%22%3A%22${loki}%22%2C%22queries%22%3A%5B%7B%22refId%22%3A%22A%22%2C%22expr%22%3A%22%7Bjob%3D%5C%22kubernetes-pods%5C%22%2Cnamespace%3D~%5C%22${service:regex}%5C%22%2Ccontainer%3D~%5C%22api%7Cplayer-api%7Cfrontend-game%7Cfrontend-public%5C%22%7D%20%7C~%20%5C%22%28%3Fi%29%28%5E%7C%5B%5B%3Aspace%3A%5D%5C%5C%5C%22%5C%5C%5C%5C%5B%5D%29%28error%7Cerr%7Cfail%7Cfatal%7Ccritical%29%28%5B%5B%3Aspace%3A%5D%5C%5C%5C%22%5C%5C%5C%5C%5D%3A%2C%5D%7C%24%29%7C%28%3Fi%29%28%5E%7C%5B%5B%3Aspace%3A%5D%5C%5C%5C%22%5C%5C%5C%5C%5B%5D%29%28warn%7Cwarning%29%28%5B%5B%3Aspace%3A%5D%5C%5C%5C%22%5C%5C%5C%5C%5D%3A%2C%5D%7C%24%29%5C%22%22%2C%22queryType%22%3A%22range%22%7D%5D%2C%22range%22%3A%7B%22from%22%3A%22${__from}%22%2C%22to%22%3A%22${__to}%22%7D%7D%7D"
+        }
+      ],
+      "id": 10
+    },
+    {
+      "title": "Source availability",
+      "type": "table",
+      "datasource": {
+        "type": "loki",
+        "uid": "${loki}"
+      },
+      "description": "1 = source responded, 0 = unavailable or unconfigured. Empty = no fresh observation.",
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 0,
+        "y": 50
+      },
+      "options": {},
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Unavailable"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "(last_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, snapshot, source | kpi_kind=\"source_available\" | service_id=~\"${service:regex}\" | source=~\"kubernetes.*|argocd\" | unwrap kpi_value | __error__=\"\" [15m]) by (service_id, snapshot, source)) and on (service_id, snapshot) topk by (service_id) (1, max_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, snapshot | kpi_kind=\"collector_snapshot\" | service_id=~\"${service:regex}\" | unwrap kpi_value | __error__=\"\" [15m]) by (service_id, snapshot))",
+          "legendFormat": "",
+          "queryType": "instant",
+          "datasource": {
+            "type": "loki",
+            "uid": "${loki}"
+          },
+          "editorMode": "code",
+          "refId": "A"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "options": {
+            "mode": "columns"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "snapshot": true
+            },
+            "indexByName": {
+              "service_id": 0,
+              "source": 1,
+              "Value": 2
+            }
+          }
+        }
+      ],
+      "id": 11
+    }
+  ]
+}

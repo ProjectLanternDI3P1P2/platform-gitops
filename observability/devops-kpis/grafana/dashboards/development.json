@@ -1,0 +1,932 @@
+{
+  "uid": "lantern-devops-development",
+  "title": "Lantern · Development & Code Quality",
+  "tags": [
+    "Lantern",
+    "DevOps"
+  ],
+  "schemaVersion": 39,
+  "editable": false,
+  "refresh": "5m",
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
+  "timezone": "browser",
+  "links": [
+    {
+      "type": "dashboards",
+      "title": "Lantern DevOps",
+      "tags": [
+        "Lantern"
+      ],
+      "keepTime": true,
+      "asDropdown": true
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "loki",
+        "label": "Kubernetes Loki",
+        "type": "datasource",
+        "query": "loki",
+        "refresh": 1,
+        "multi": false,
+        "includeAll": false,
+        "options": []
+      },
+      {
+        "name": "squad",
+        "label": "Squad",
+        "type": "custom",
+        "query": "combat,dungeon,player,progression,rewards,unassigned",
+        "multi": true,
+        "includeAll": true,
+        "allValue": "combat|dungeon|player|progression|rewards|unassigned",
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "options": [
+          {
+            "text": "combat",
+            "value": "combat",
+            "selected": false
+          },
+          {
+            "text": "dungeon",
+            "value": "dungeon",
+            "selected": false
+          },
+          {
+            "text": "player",
+            "value": "player",
+            "selected": false
+          },
+          {
+            "text": "progression",
+            "value": "progression",
+            "selected": false
+          },
+          {
+            "text": "rewards",
+            "value": "rewards",
+            "selected": false
+          },
+          {
+            "text": "unassigned",
+            "value": "unassigned",
+            "selected": false
+          }
+        ]
+      },
+      {
+        "name": "repository",
+        "label": "Repository",
+        "type": "custom",
+        "query": "combat-backend,dungeon-backend,frontend-game,frontend-public,leaderboard-backend,player-backend,reward-backend",
+        "multi": true,
+        "includeAll": true,
+        "allValue": "combat-backend|dungeon-backend|frontend-game|frontend-public|leaderboard-backend|player-backend|reward-backend",
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "options": [
+          {
+            "text": "combat-backend",
+            "value": "combat-backend",
+            "selected": false
+          },
+          {
+            "text": "dungeon-backend",
+            "value": "dungeon-backend",
+            "selected": false
+          },
+          {
+            "text": "frontend-game",
+            "value": "frontend-game",
+            "selected": false
+          },
+          {
+            "text": "frontend-public",
+            "value": "frontend-public",
+            "selected": false
+          },
+          {
+            "text": "leaderboard-backend",
+            "value": "leaderboard-backend",
+            "selected": false
+          },
+          {
+            "text": "player-backend",
+            "value": "player-backend",
+            "selected": false
+          },
+          {
+            "text": "reward-backend",
+            "value": "reward-backend",
+            "selected": false
+          }
+        ]
+      },
+      {
+        "name": "service",
+        "label": "Service",
+        "type": "custom",
+        "query": "combat,dungeon,frontend-game,frontend-public,leaderboard,player,rewards",
+        "multi": true,
+        "includeAll": true,
+        "allValue": "combat|dungeon|frontend-game|frontend-public|leaderboard|player|rewards",
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "options": [
+          {
+            "text": "combat",
+            "value": "combat",
+            "selected": false
+          },
+          {
+            "text": "dungeon",
+            "value": "dungeon",
+            "selected": false
+          },
+          {
+            "text": "frontend-game",
+            "value": "frontend-game",
+            "selected": false
+          },
+          {
+            "text": "frontend-public",
+            "value": "frontend-public",
+            "selected": false
+          },
+          {
+            "text": "leaderboard",
+            "value": "leaderboard",
+            "selected": false
+          },
+          {
+            "text": "player",
+            "value": "player",
+            "selected": false
+          },
+          {
+            "text": "rewards",
+            "value": "rewards",
+            "selected": false
+          }
+        ]
+      }
+    ]
+  },
+  "panels": [
+    {
+      "title": "",
+      "type": "text",
+      "datasource": null,
+      "description": "",
+      "gridPos": {
+        "w": 24,
+        "h": 3,
+        "x": 0,
+        "y": 0
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "CI uses observed attempts from the latest 50 runs per repository. Historical trends start when Loki receives observations. Select the existing Kubernetes Loki datasource."
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Unavailable"
+        },
+        "overrides": []
+      },
+      "targets": [],
+      "id": 1
+    },
+    {
+      "title": "CI success rate",
+      "type": "stat",
+      "datasource": {
+        "type": "loki",
+        "uid": "${loki}"
+      },
+      "description": "",
+      "gridPos": {
+        "w": 6,
+        "h": 8,
+        "x": 0,
+        "y": 3
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Unavailable",
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "100 * ((count by (service_id) (max_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, run_id, attempt, event_time, conclusion, check | kpi_kind=\"ci_completed_timestamp_seconds\" | service_id=~\"${service:regex}\" | repository=~\"${repository:regex}\" | squad=~\"${squad:regex}\" | conclusion=~\"success\" | event_time >= ${__from:date:seconds} | unwrap kpi_value | __error__=\"\" [$__range]) by (service_id, run_id, attempt))) or on (service_id) (0 * count by (service_id) (max_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, run_id, attempt, event_time, conclusion, check | kpi_kind=\"ci_completed_timestamp_seconds\" | service_id=~\"${service:regex}\" | repository=~\"${repository:regex}\" | squad=~\"${squad:regex}\" | conclusion=~\"success|failure|timed_out|startup_failure\" | event_time >= ${__from:date:seconds} | unwrap kpi_value | __error__=\"\" [$__range]) by (service_id, run_id, attempt)))) / (count by (service_id) (max_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, run_id, attempt, event_time, conclusion, check | kpi_kind=\"ci_completed_timestamp_seconds\" | service_id=~\"${service:regex}\" | repository=~\"${repository:regex}\" | squad=~\"${squad:regex}\" | conclusion=~\"success|failure|timed_out|startup_failure\" | event_time >= ${__from:date:seconds} | unwrap kpi_value | __error__=\"\" [$__range]) by (service_id, run_id, attempt)))",
+          "legendFormat": "{{service_id}}",
+          "queryType": "instant",
+          "datasource": {
+            "type": "loki",
+            "uid": "${loki}"
+          },
+          "editorMode": "code",
+          "refId": "A"
+        }
+      ],
+      "id": 2
+    },
+    {
+      "title": "CI failure rate",
+      "type": "stat",
+      "datasource": {
+        "type": "loki",
+        "uid": "${loki}"
+      },
+      "description": "",
+      "gridPos": {
+        "w": 6,
+        "h": 8,
+        "x": 6,
+        "y": 3
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Unavailable",
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "100 * ((count by (service_id) (max_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, run_id, attempt, event_time, conclusion, check | kpi_kind=\"ci_completed_timestamp_seconds\" | service_id=~\"${service:regex}\" | repository=~\"${repository:regex}\" | squad=~\"${squad:regex}\" | conclusion=~\"failure|timed_out|startup_failure\" | event_time >= ${__from:date:seconds} | unwrap kpi_value | __error__=\"\" [$__range]) by (service_id, run_id, attempt))) or on (service_id) (0 * count by (service_id) (max_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, run_id, attempt, event_time, conclusion, check | kpi_kind=\"ci_completed_timestamp_seconds\" | service_id=~\"${service:regex}\" | repository=~\"${repository:regex}\" | squad=~\"${squad:regex}\" | conclusion=~\"success|failure|timed_out|startup_failure\" | event_time >= ${__from:date:seconds} | unwrap kpi_value | __error__=\"\" [$__range]) by (service_id, run_id, attempt)))) / (count by (service_id) (max_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, run_id, attempt, event_time, conclusion, check | kpi_kind=\"ci_completed_timestamp_seconds\" | service_id=~\"${service:regex}\" | repository=~\"${repository:regex}\" | squad=~\"${squad:regex}\" | conclusion=~\"success|failure|timed_out|startup_failure\" | event_time >= ${__from:date:seconds} | unwrap kpi_value | __error__=\"\" [$__range]) by (service_id, run_id, attempt)))",
+          "legendFormat": "{{service_id}}",
+          "queryType": "instant",
+          "datasource": {
+            "type": "loki",
+            "uid": "${loki}"
+          },
+          "editorMode": "code",
+          "refId": "A"
+        }
+      ],
+      "id": 3
+    },
+    {
+      "title": "Average CI duration",
+      "type": "stat",
+      "datasource": {
+        "type": "loki",
+        "uid": "${loki}"
+      },
+      "description": "",
+      "gridPos": {
+        "w": 6,
+        "h": 8,
+        "x": 12,
+        "y": 3
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Unavailable",
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "avg by (service_id) (max_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, run_id, attempt, event_time, conclusion, check | kpi_kind=\"ci_duration_seconds\" | service_id=~\"${service:regex}\" | repository=~\"${repository:regex}\" | squad=~\"${squad:regex}\" | event_time >= ${__from:date:seconds} | unwrap kpi_value | __error__=\"\" [$__range]) by (service_id, run_id, attempt))",
+          "legendFormat": "{{service_id}}",
+          "queryType": "instant",
+          "datasource": {
+            "type": "loki",
+            "uid": "${loki}"
+          },
+          "editorMode": "code",
+          "refId": "A"
+        }
+      ],
+      "id": 4
+    },
+    {
+      "title": "Oldest observed CI completion",
+      "type": "table",
+      "datasource": {
+        "type": "loki",
+        "uid": "${loki}"
+      },
+      "description": "",
+      "gridPos": {
+        "w": 6,
+        "h": 8,
+        "x": 18,
+        "y": 3
+      },
+      "options": {},
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Unavailable"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dateTimeAsIso"
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "expr": "1000 * ((last_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, snapshot | kpi_kind=\"ci_oldest_observed_timestamp_seconds\" | service_id=~\"${service:regex}\" | repository=~\"${repository:regex}\" | squad=~\"${squad:regex}\" | unwrap kpi_value | __error__=\"\" [15m]) by (service_id, snapshot)) and on (service_id, snapshot) topk by (service_id) (1, max_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, snapshot | kpi_kind=\"collector_snapshot\" | service_id=~\"${service:regex}\" | unwrap kpi_value | __error__=\"\" [15m]) by (service_id, snapshot)))",
+          "legendFormat": "",
+          "queryType": "instant",
+          "datasource": {
+            "type": "loki",
+            "uid": "${loki}"
+          },
+          "editorMode": "code",
+          "refId": "A"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "options": {
+            "mode": "columns"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "snapshot": true
+            },
+            "indexByName": {
+              "service_id": 0,
+              "Value": 1
+            }
+          }
+        }
+      ],
+      "id": 5
+    },
+    {
+      "title": "Last CI execution",
+      "type": "table",
+      "datasource": {
+        "type": "loki",
+        "uid": "${loki}"
+      },
+      "description": "",
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 0,
+        "y": 11
+      },
+      "options": {},
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Unavailable"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "run_id"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Open GitHub Actions run",
+                    "url": "https://github.com/ProjectLanternDI3P1P2/${__data.fields.repository}/actions/runs/${__data.fields.run_id}"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dateTimeAsIso"
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "expr": "1000 * ((last_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, snapshot, status, sha, run_id | kpi_kind=\"ci_last_run_timestamp_seconds\" | service_id=~\"${service:regex}\" | repository=~\"${repository:regex}\" | squad=~\"${squad:regex}\" | unwrap kpi_value | __error__=\"\" [15m]) by (service_id, snapshot, repository, status, sha, run_id)) and on (service_id, snapshot) topk by (service_id) (1, max_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, snapshot | kpi_kind=\"collector_snapshot\" | service_id=~\"${service:regex}\" | unwrap kpi_value | __error__=\"\" [15m]) by (service_id, snapshot)))",
+          "legendFormat": "",
+          "queryType": "instant",
+          "datasource": {
+            "type": "loki",
+            "uid": "${loki}"
+          },
+          "editorMode": "code",
+          "refId": "A"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "options": {
+            "mode": "columns"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "snapshot": true
+            },
+            "indexByName": {
+              "service_id": 0,
+              "repository": 1,
+              "status": 2,
+              "sha": 3,
+              "run_id": 4,
+              "Value": 5
+            }
+          }
+        }
+      ],
+      "id": 6
+    },
+    {
+      "title": "Daily average duration of recorded CI attempts",
+      "type": "timeseries",
+      "datasource": {
+        "type": "loki",
+        "uid": "${loki}"
+      },
+      "description": "Uses observation time in Loki. At initial collection, recent completed runs are recorded together.",
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 12,
+        "y": 11
+      },
+      "options": {},
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Unavailable",
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "avg by (service_id) (max_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, run_id, attempt, event_time, conclusion, check | kpi_kind=\"ci_duration_seconds\" | service_id=~\"${service:regex}\" | repository=~\"${repository:regex}\" | squad=~\"${squad:regex}\" | unwrap kpi_value | __error__=\"\" [1d]) by (service_id, run_id, attempt))",
+          "legendFormat": "{{service_id}}",
+          "queryType": "range",
+          "datasource": {
+            "type": "loki",
+            "uid": "${loki}"
+          },
+          "editorMode": "code",
+          "refId": "A"
+        }
+      ],
+      "id": 7
+    },
+    {
+      "title": "CI runs with failed build checks",
+      "type": "stat",
+      "datasource": {
+        "type": "loki",
+        "uid": "${loki}"
+      },
+      "description": "",
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 0,
+        "y": 19
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Unavailable"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum by (service_id) (max_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, run_id, attempt, event_time, conclusion, check | kpi_kind=\"ci_check_failed\" | service_id=~\"${service:regex}\" | repository=~\"${repository:regex}\" | squad=~\"${squad:regex}\" | check=\"build\" | event_time >= ${__from:date:seconds} | unwrap kpi_value | __error__=\"\" [$__range]) by (service_id, run_id, attempt))",
+          "legendFormat": "{{service_id}}",
+          "queryType": "instant",
+          "datasource": {
+            "type": "loki",
+            "uid": "${loki}"
+          },
+          "editorMode": "code",
+          "refId": "A"
+        }
+      ],
+      "id": 8
+    },
+    {
+      "title": "CI runs with failed test checks",
+      "type": "stat",
+      "datasource": {
+        "type": "loki",
+        "uid": "${loki}"
+      },
+      "description": "",
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 12,
+        "y": 19
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Unavailable"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum by (service_id) (max_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, run_id, attempt, event_time, conclusion, check | kpi_kind=\"ci_check_failed\" | service_id=~\"${service:regex}\" | repository=~\"${repository:regex}\" | squad=~\"${squad:regex}\" | check=\"test\" | event_time >= ${__from:date:seconds} | unwrap kpi_value | __error__=\"\" [$__range]) by (service_id, run_id, attempt))",
+          "legendFormat": "{{service_id}}",
+          "queryType": "instant",
+          "datasource": {
+            "type": "loki",
+            "uid": "${loki}"
+          },
+          "editorMode": "code",
+          "refId": "A"
+        }
+      ],
+      "id": 9
+    },
+    {
+      "title": "SonarQube Quality Gate",
+      "type": "table",
+      "datasource": {
+        "type": "loki",
+        "uid": "${loki}"
+      },
+      "description": "",
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 0,
+        "y": 27
+      },
+      "options": {},
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Unavailable"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "(last_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, snapshot, status | kpi_kind=\"sonar_gate_info\" | service_id=~\"${service:regex}\" | repository=~\"${repository:regex}\" | squad=~\"${squad:regex}\" | unwrap kpi_value | __error__=\"\" [15m]) by (service_id, snapshot, status)) and on (service_id, snapshot) topk by (service_id) (1, max_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, snapshot | kpi_kind=\"collector_snapshot\" | service_id=~\"${service:regex}\" | unwrap kpi_value | __error__=\"\" [15m]) by (service_id, snapshot))",
+          "legendFormat": "",
+          "queryType": "instant",
+          "datasource": {
+            "type": "loki",
+            "uid": "${loki}"
+          },
+          "editorMode": "code",
+          "refId": "A"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "options": {
+            "mode": "columns"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "snapshot": true,
+              "Value": true
+            },
+            "indexByName": {
+              "service_id": 0,
+              "status": 1
+            }
+          }
+        }
+      ],
+      "id": 10
+    },
+    {
+      "title": "Source availability",
+      "type": "table",
+      "datasource": {
+        "type": "loki",
+        "uid": "${loki}"
+      },
+      "description": "1 = source responded, 0 = unavailable or unconfigured. Empty = no fresh observation.",
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 12,
+        "y": 27
+      },
+      "options": {},
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Unavailable"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "(last_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, snapshot, source | kpi_kind=\"source_available\" | service_id=~\"${service:regex}\" | repository=~\"${repository:regex}\" | squad=~\"${squad:regex}\" | source=~\"github_ci.*|sonar_.*\" | unwrap kpi_value | __error__=\"\" [15m]) by (service_id, snapshot, source)) and on (service_id, snapshot) topk by (service_id) (1, max_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, snapshot | kpi_kind=\"collector_snapshot\" | service_id=~\"${service:regex}\" | unwrap kpi_value | __error__=\"\" [15m]) by (service_id, snapshot))",
+          "legendFormat": "",
+          "queryType": "instant",
+          "datasource": {
+            "type": "loki",
+            "uid": "${loki}"
+          },
+          "editorMode": "code",
+          "refId": "A"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "options": {
+            "mode": "columns"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "snapshot": true
+            },
+            "indexByName": {
+              "service_id": 0,
+              "source": 1,
+              "Value": 2
+            }
+          }
+        }
+      ],
+      "id": 11
+    },
+    {
+      "title": "Test coverage",
+      "type": "timeseries",
+      "datasource": {
+        "type": "loki",
+        "uid": "${loki}"
+      },
+      "description": "",
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 0,
+        "y": 35
+      },
+      "options": {},
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Unavailable",
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "last_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, measure | kpi_kind=\"sonar_measure\" | service_id=~\"${service:regex}\" | repository=~\"${repository:regex}\" | squad=~\"${squad:regex}\" | measure=~\"coverage\" | unwrap kpi_value | __error__=\"\" [15m]) by (service_id, measure)",
+          "legendFormat": "{{service_id}} · {{measure}}",
+          "queryType": "range",
+          "datasource": {
+            "type": "loki",
+            "uid": "${loki}"
+          },
+          "editorMode": "code",
+          "refId": "A"
+        }
+      ],
+      "id": 12
+    },
+    {
+      "title": "Code duplication",
+      "type": "timeseries",
+      "datasource": {
+        "type": "loki",
+        "uid": "${loki}"
+      },
+      "description": "",
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 12,
+        "y": 35
+      },
+      "options": {},
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Unavailable",
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "last_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, measure | kpi_kind=\"sonar_measure\" | service_id=~\"${service:regex}\" | repository=~\"${repository:regex}\" | squad=~\"${squad:regex}\" | measure=~\"duplicated_lines_density\" | unwrap kpi_value | __error__=\"\" [15m]) by (service_id, measure)",
+          "legendFormat": "{{service_id}} · {{measure}}",
+          "queryType": "range",
+          "datasource": {
+            "type": "loki",
+            "uid": "${loki}"
+          },
+          "editorMode": "code",
+          "refId": "A"
+        }
+      ],
+      "id": 13
+    },
+    {
+      "title": "Technical debt",
+      "type": "timeseries",
+      "datasource": {
+        "type": "loki",
+        "uid": "${loki}"
+      },
+      "description": "",
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 0,
+        "y": 43
+      },
+      "options": {},
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Unavailable",
+          "unit": "m"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "last_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, measure | kpi_kind=\"sonar_measure\" | service_id=~\"${service:regex}\" | repository=~\"${repository:regex}\" | squad=~\"${squad:regex}\" | measure=~\"sqale_index\" | unwrap kpi_value | __error__=\"\" [15m]) by (service_id, measure)",
+          "legendFormat": "{{service_id}} · {{measure}}",
+          "queryType": "range",
+          "datasource": {
+            "type": "loki",
+            "uid": "${loki}"
+          },
+          "editorMode": "code",
+          "refId": "A"
+        }
+      ],
+      "id": 14
+    },
+    {
+      "title": "Bugs, vulnerabilities and code smells",
+      "type": "timeseries",
+      "datasource": {
+        "type": "loki",
+        "uid": "${loki}"
+      },
+      "description": "",
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 12,
+        "y": 43
+      },
+      "options": {},
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Unavailable"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "last_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, measure | kpi_kind=\"sonar_measure\" | service_id=~\"${service:regex}\" | repository=~\"${repository:regex}\" | squad=~\"${squad:regex}\" | measure=~\"bugs|vulnerabilities|code_smells\" | unwrap kpi_value | __error__=\"\" [15m]) by (service_id, measure)",
+          "legendFormat": "{{service_id}} · {{measure}}",
+          "queryType": "range",
+          "datasource": {
+            "type": "loki",
+            "uid": "${loki}"
+          },
+          "editorMode": "code",
+          "refId": "A"
+        }
+      ],
+      "id": 15
+    },
+    {
+      "title": "Software quality issues",
+      "type": "timeseries",
+      "datasource": {
+        "type": "loki",
+        "uid": "${loki}"
+      },
+      "description": "",
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 0,
+        "y": 51
+      },
+      "options": {},
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Unavailable"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "last_over_time({job=\"kubernetes-pods\",namespace=\"monitoring\",container=\"lantern-kpi-collector\"} |= \"LANTERN_KPI \" | regexp `LANTERN_KPI (?P<payload>\\{.*\\})$` | line_format \"{{.payload}}\" | json kpi_kind=\"kind\", kpi_value=\"value\", service_id, repository, squad, measure | kpi_kind=\"sonar_measure\" | service_id=~\"${service:regex}\" | repository=~\"${repository:regex}\" | squad=~\"${squad:regex}\" | measure=~\"software_quality_.*_issues\" | unwrap kpi_value | __error__=\"\" [15m]) by (service_id, measure)",
+          "legendFormat": "{{service_id}} · {{measure}}",
+          "queryType": "range",
+          "datasource": {
+            "type": "loki",
+            "uid": "${loki}"
+          },
+          "editorMode": "code",
+          "refId": "A"
+        }
+      ],
+      "id": 16
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+- name: Create the Lantern dashboard directory
+  ansible.builtin.file:
+    path: "{{ lantern_kpi_dashboard_dir }}"
+    owner: root
+    group: "{{ lantern_kpi_grafana_group }}"
+    mode: "0750"
+    state: directory
+
+- name: Publish the versioned dashboards
+  ansible.builtin.copy:
+    src: "{{ role_path }}/../dashboards/{{ item }}"
+    dest: "{{ lantern_kpi_dashboard_dir }}/{{ item }}"
+    owner: root
+    group: "{{ lantern_kpi_grafana_group }}"
+    mode: "0640"
+  loop:
+    - development.json
+    - deployments.json
+    - health.json
+    - service.json
+
+- name: Provision the Lantern dashboard folder
+  ansible.builtin.template:
+    src: dashboards.yaml.j2
+    dest: "{{ lantern_kpi_provisioning_dir }}/dashboards/lantern-devops.yaml"
+    owner: root
+    group: "{{ lantern_kpi_grafana_group }}"
+    mode: "0640"
+  notify: Restart Lantern Grafana

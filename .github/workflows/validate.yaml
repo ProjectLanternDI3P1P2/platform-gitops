@@ -68,6 +68,11 @@ jobs:
             --version 0.14.2 -n arc-runners --skip-crds \
             -f platform/actions-runner-controller/runners/values.yaml >/dev/null
 
+      - name: Validate DevOps KPI configuration
+        run: |
+          python3 -B observability/devops-kpis/grafana/generate.py --check
+          python3 -B -m unittest discover -s observability/devops-kpis/collector
+
       - name: Validate migration jobs and image promotion
         run: |
           python3 -m pip install --only-binary :all: --disable-pip-version-check PyYAML==6.0.2
