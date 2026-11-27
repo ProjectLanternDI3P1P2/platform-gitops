@@ -6,7 +6,7 @@ metadata:
   name: api-gateway-dungeon
   annotations:
     traefik.ingress.kubernetes.io/router.entrypoints: web
-    traefik.ingress.kubernetes.io/router.middlewares: dungeon-authenticated@kubernetescrd
+    traefik.ingress.kubernetes.io/router.middlewares: dungeon-dungeon-authenticated@kubernetescrd
 spec:
   ingressClassName: traefik
   rules:
