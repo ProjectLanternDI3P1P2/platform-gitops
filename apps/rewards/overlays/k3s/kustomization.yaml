@@ -18,7 +18,8 @@ patches:
 images:
   - name: 10.4.111.200:18443/lantern/backend
     newName: 10.4.111.200:18443/lantern/reward-backend
-    newTag: git-3855c05406ac72f27e10922f95248b44057c3c2e
+    newTag: v1.4.1
+    digest: sha256:6fe9a8a658d8ce003081abf29fbbd614f98999c310f8f980691fbeeaaeb4d748
 
 # Run after this overlay's patches so the migration targets the same schema.
 replacements:
