@@ -12,6 +12,8 @@ spec:
               value: Host=postgres-rw.database.svc.cluster.local;Port=5432;Database=lantern;Username=dungeon;Search Path=dungeon;Maximum Pool Size=10
             - name: Grpc__Player__Address
               value: http://player-api.player.svc.cluster.local:8081
+            - name: Grpc__Rewards__Address
+              value: http://rewards-api.rewards.svc.cluster.local:8081
             - name: Cors__AllowedOrigins__0
               value: http://front.lantern.diiage
             - name: Cors__AllowedOrigins__1
