@@ -13,4 +13,5 @@ patches:
 # Pin a release that reads public configuration at runtime.
 images:
   - name: 10.4.111.200:18443/lantern/frontend-game
-    newTag: v0.3.0
+    newTag: v0.5.1
+    digest: sha256:6534bf51272e91786be823549a70b03baba5e5146808c178a1f32fe27d90cb5b
