@@ -1,0 +1,63 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: lantern-kpi-collector
+  namespace: monitoring
+  labels:
+    lantern.kpi/target: collector
+spec:
+  selector:
+    app.kubernetes.io/name: lantern-kpi-collector
+  ports:
+    - {name: metrics, port: 9108, targetPort: metrics}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: lantern-kpi-argocd-metrics
+  namespace: argocd
+  labels:
+    lantern.kpi/target: argocd
+spec:
+  selector:
+    app.kubernetes.io/name: argocd-application-controller
+  ports:
+    - {name: metrics, port: 8082, targetPort: 8082}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: lantern-kpi
+  namespace: monitoring
+  labels:
+    release: lantern-kpi
+spec:
+  namespaceSelector:
+    matchNames: [monitoring, argocd]
+  selector:
+    matchExpressions:
+      - key: lantern.kpi/target
+        operator: In
+        values: [collector, argocd]
+  endpoints:
+    - port: metrics
+      honorLabels: true
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: lantern-kpi-harbor
+  namespace: monitoring
+  labels:
+    release: lantern-kpi
+spec:
+  namespaceSelector:
+    matchNames: [harbor]
+  selector: {}
+  endpoints:
+    - port: http-metrics
+      path: /metrics
+      relabelings:
+        - action: keep
+          sourceLabels: [__meta_kubernetes_service_name]
+          regex: harbor-(exporter|core|registry|jobservice)

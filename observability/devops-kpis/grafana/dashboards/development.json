@@ -1,0 +1,841 @@
+{
+  "uid": "lantern-devops-development",
+  "title": "Lantern · Development & Code Quality",
+  "tags": [
+    "Lantern",
+    "DevOps"
+  ],
+  "schemaVersion": 39,
+  "editable": false,
+  "refresh": "5m",
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
+  "timezone": "browser",
+  "links": [
+    {
+      "type": "dashboards",
+      "title": "Lantern DevOps",
+      "tags": [
+        "Lantern"
+      ],
+      "keepTime": true,
+      "asDropdown": true
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "squad",
+        "label": "Squad",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "lantern-devops-prometheus"
+        },
+        "definition": "label_values(lantern_service_info, squad)",
+        "query": {
+          "query": "label_values(lantern_service_info, squad)",
+          "refId": "var-squad"
+        },
+        "refresh": 1,
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        }
+      },
+      {
+        "name": "repository",
+        "label": "Repository",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "lantern-devops-prometheus"
+        },
+        "definition": "label_values(lantern_service_info{squad=~\"${squad:regex}\"}, repository)",
+        "query": {
+          "query": "label_values(lantern_service_info{squad=~\"${squad:regex}\"}, repository)",
+          "refId": "var-repository"
+        },
+        "refresh": 1,
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        }
+      },
+      {
+        "name": "service",
+        "label": "Service",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "lantern-devops-prometheus"
+        },
+        "definition": "label_values(lantern_service_info{repository=~\"${repository:regex}\",squad=~\"${squad:regex}\"}, service)",
+        "query": {
+          "query": "label_values(lantern_service_info{repository=~\"${repository:regex}\",squad=~\"${squad:regex}\"}, service)",
+          "refId": "var-service"
+        },
+        "refresh": 1,
+        "multi": true,
+        "includeAll": true,
+        "allValue": "combat|dungeon|frontend-game|frontend-public|leaderboard|player|rewards",
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "title": "",
+      "type": "text",
+      "datasource": null,
+      "description": "",
+      "gridPos": {
+        "w": 24,
+        "h": 3,
+        "x": 0,
+        "y": 0
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "CI covers the latest 50 workflow runs per repository, with jobs for the latest observed attempt. Rates exclude canceled, skipped and neutral runs. Sonar trends start when collection begins."
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Unavailable"
+        },
+        "overrides": []
+      },
+      "targets": [],
+      "id": 1
+    },
+    {
+      "title": "CI success rate",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "lantern-devops-prometheus"
+      },
+      "description": "",
+      "gridPos": {
+        "w": 6,
+        "h": 8,
+        "x": 0,
+        "y": 3
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Unavailable",
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "100 * ((count by(service) (max_over_time(lantern_ci_completed_timestamp_seconds{service=~\"${service:regex}\",repository=~\"${repository:regex}\",squad=~\"${squad:regex}\",conclusion=~\"success\"}[$__range]) > time() - $__range_s)) or on(service) (0 * count by(service) (max_over_time(lantern_ci_completed_timestamp_seconds{service=~\"${service:regex}\",repository=~\"${repository:regex}\",squad=~\"${squad:regex}\",conclusion=~\"success|failure|timed_out|startup_failure\"}[$__range]) > time() - $__range_s))) / (count by(service) (max_over_time(lantern_ci_completed_timestamp_seconds{service=~\"${service:regex}\",repository=~\"${repository:regex}\",squad=~\"${squad:regex}\",conclusion=~\"success|failure|timed_out|startup_failure\"}[$__range]) > time() - $__range_s))",
+          "legendFormat": "{{service}}",
+          "format": "time_series",
+          "instant": true,
+          "range": false,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "lantern-devops-prometheus"
+          },
+          "refId": "A"
+        }
+      ],
+      "id": 2
+    },
+    {
+      "title": "CI failure rate",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "lantern-devops-prometheus"
+      },
+      "description": "",
+      "gridPos": {
+        "w": 6,
+        "h": 8,
+        "x": 6,
+        "y": 3
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Unavailable",
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "100 * ((count by(service) (max_over_time(lantern_ci_completed_timestamp_seconds{service=~\"${service:regex}\",repository=~\"${repository:regex}\",squad=~\"${squad:regex}\",conclusion=~\"failure|timed_out|startup_failure\"}[$__range]) > time() - $__range_s)) or on(service) (0 * count by(service) (max_over_time(lantern_ci_completed_timestamp_seconds{service=~\"${service:regex}\",repository=~\"${repository:regex}\",squad=~\"${squad:regex}\",conclusion=~\"success|failure|timed_out|startup_failure\"}[$__range]) > time() - $__range_s))) / (count by(service) (max_over_time(lantern_ci_completed_timestamp_seconds{service=~\"${service:regex}\",repository=~\"${repository:regex}\",squad=~\"${squad:regex}\",conclusion=~\"success|failure|timed_out|startup_failure\"}[$__range]) > time() - $__range_s))",
+          "legendFormat": "{{service}}",
+          "format": "time_series",
+          "instant": true,
+          "range": false,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "lantern-devops-prometheus"
+          },
+          "refId": "A"
+        }
+      ],
+      "id": 3
+    },
+    {
+      "title": "Average CI duration",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "lantern-devops-prometheus"
+      },
+      "description": "",
+      "gridPos": {
+        "w": 6,
+        "h": 8,
+        "x": 12,
+        "y": 3
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Unavailable",
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "avg by(service) (last_over_time(lantern_ci_duration_seconds{service=~\"${service:regex}\",repository=~\"${repository:regex}\",squad=~\"${squad:regex}\"}[$__range]) and on(service,run_id,attempt,conclusion) (max_over_time(lantern_ci_completed_timestamp_seconds{service=~\"${service:regex}\",repository=~\"${repository:regex}\",squad=~\"${squad:regex}\"}[$__range]) > time() - $__range_s))",
+          "legendFormat": "{{service}}",
+          "format": "time_series",
+          "instant": true,
+          "range": false,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "lantern-devops-prometheus"
+          },
+          "refId": "A"
+        }
+      ],
+      "id": 4
+    },
+    {
+      "title": "Oldest observed CI completion",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "lantern-devops-prometheus"
+      },
+      "description": "",
+      "gridPos": {
+        "w": 6,
+        "h": 8,
+        "x": 18,
+        "y": 3
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Unavailable",
+          "unit": "dateTimeAsIso"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "1000 * lantern_ci_oldest_observed_timestamp_seconds{service=~\"${service:regex}\",repository=~\"${repository:regex}\",squad=~\"${squad:regex}\"}",
+          "legendFormat": "{{service}}",
+          "format": "time_series",
+          "instant": true,
+          "range": false,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "lantern-devops-prometheus"
+          },
+          "refId": "A"
+        }
+      ],
+      "id": 5
+    },
+    {
+      "title": "Last CI execution",
+      "type": "table",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "lantern-devops-prometheus"
+      },
+      "description": "",
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 0,
+        "y": 11
+      },
+      "options": {},
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Unavailable"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "run_id"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Open GitHub Actions run",
+                    "url": "https://github.com/ProjectLanternDI3P1P2/${__data.fields.repository}/actions/runs/${__data.fields.run_id}"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dateTimeAsIso"
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "expr": "1000 * (lantern_ci_last_run_timestamp_seconds{service=~\"${service:regex}\",repository=~\"${repository:regex}\",squad=~\"${squad:regex}\"})",
+          "legendFormat": "",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "lantern-devops-prometheus"
+          },
+          "refId": "A"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "job": true,
+              "instance": true,
+              "endpoint": true,
+              "namespace": true,
+              "pod": true,
+              "container": true,
+              "deployment": true,
+              "squad": true
+            },
+            "indexByName": {
+              "service": 0,
+              "repository": 1,
+              "status": 2,
+              "sha": 3,
+              "run_id": 4,
+              "Value": 5
+            }
+          }
+        }
+      ],
+      "id": 6
+    },
+    {
+      "title": "Daily average CI duration",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "lantern-devops-prometheus"
+      },
+      "description": "",
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 12,
+        "y": 11
+      },
+      "options": {},
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Unavailable",
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "avg by(service) (last_over_time(lantern_ci_duration_seconds{service=~\"${service:regex}\",repository=~\"${repository:regex}\",squad=~\"${squad:regex}\"}[1d]) and on(service,run_id,attempt,conclusion) (max_over_time(lantern_ci_completed_timestamp_seconds{service=~\"${service:regex}\",repository=~\"${repository:regex}\",squad=~\"${squad:regex}\"}[1d]) > time() - 86400))",
+          "legendFormat": "{{service}}",
+          "format": "time_series",
+          "instant": false,
+          "range": true,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "lantern-devops-prometheus"
+          },
+          "refId": "A"
+        }
+      ],
+      "id": 7
+    },
+    {
+      "title": "CI runs with failed build checks",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "lantern-devops-prometheus"
+      },
+      "description": "Observed named jobs or steps with a failed conclusion. Missing jobs or unclassified checks can undercount.",
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 0,
+        "y": 19
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Unavailable"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum by(service) (max_over_time(lantern_ci_check_failed{service=~\"${service:regex}\",repository=~\"${repository:regex}\",squad=~\"${squad:regex}\",check=\"build\"}[$__range]) and on(service,run_id,attempt,conclusion) (max_over_time(lantern_ci_completed_timestamp_seconds{service=~\"${service:regex}\",repository=~\"${repository:regex}\",squad=~\"${squad:regex}\"}[$__range]) > time() - $__range_s))",
+          "legendFormat": "{{service}}",
+          "format": "time_series",
+          "instant": true,
+          "range": false,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "lantern-devops-prometheus"
+          },
+          "refId": "A"
+        }
+      ],
+      "id": 8
+    },
+    {
+      "title": "CI runs with failed test checks",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "lantern-devops-prometheus"
+      },
+      "description": "Observed named jobs or steps with a failed conclusion. Missing jobs or unclassified checks can undercount.",
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 12,
+        "y": 19
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Unavailable"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum by(service) (max_over_time(lantern_ci_check_failed{service=~\"${service:regex}\",repository=~\"${repository:regex}\",squad=~\"${squad:regex}\",check=\"test\"}[$__range]) and on(service,run_id,attempt,conclusion) (max_over_time(lantern_ci_completed_timestamp_seconds{service=~\"${service:regex}\",repository=~\"${repository:regex}\",squad=~\"${squad:regex}\"}[$__range]) > time() - $__range_s))",
+          "legendFormat": "{{service}}",
+          "format": "time_series",
+          "instant": true,
+          "range": false,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "lantern-devops-prometheus"
+          },
+          "refId": "A"
+        }
+      ],
+      "id": 9
+    },
+    {
+      "title": "SonarQube Quality Gate",
+      "type": "table",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "lantern-devops-prometheus"
+      },
+      "description": "Default-branch analysis. A missing project or gate yields no row.",
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 0,
+        "y": 27
+      },
+      "options": {},
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Unavailable"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "lantern_sonar_gate_info{service=~\"${service:regex}\",repository=~\"${repository:regex}\",squad=~\"${squad:regex}\"}",
+          "legendFormat": "",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "lantern-devops-prometheus"
+          },
+          "refId": "A"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "job": true,
+              "instance": true,
+              "endpoint": true,
+              "namespace": true,
+              "pod": true,
+              "container": true,
+              "deployment": true,
+              "repository": true,
+              "squad": true,
+              "Value": true
+            },
+            "indexByName": {
+              "service": 0,
+              "status": 1
+            }
+          }
+        }
+      ],
+      "id": 10
+    },
+    {
+      "title": "Source availability",
+      "type": "table",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "lantern-devops-prometheus"
+      },
+      "description": "1 = source responded, 0 = unavailable or not configured. Empty = no fresh collector sample.",
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 12,
+        "y": 27
+      },
+      "options": {},
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Unavailable"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "lantern_source_available{service=~\"${service:regex}\",repository=~\"${repository:regex}\",squad=~\"${squad:regex}\",source=~\"github_ci.*|sonar_.*\"}",
+          "legendFormat": "",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "lantern-devops-prometheus"
+          },
+          "refId": "A"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "job": true,
+              "instance": true,
+              "endpoint": true,
+              "namespace": true,
+              "pod": true,
+              "container": true,
+              "deployment": true,
+              "repository": true,
+              "squad": true
+            },
+            "indexByName": {
+              "service": 0,
+              "source": 1,
+              "Value": 2
+            }
+          }
+        }
+      ],
+      "id": 11
+    },
+    {
+      "title": "Test coverage",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "lantern-devops-prometheus"
+      },
+      "description": "",
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 0,
+        "y": 35
+      },
+      "options": {},
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Unavailable",
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "lantern_sonar_measure{service=~\"${service:regex}\",repository=~\"${repository:regex}\",squad=~\"${squad:regex}\",measure=~\"coverage\"}",
+          "legendFormat": "{{service}} · {{measure}}",
+          "format": "time_series",
+          "instant": false,
+          "range": true,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "lantern-devops-prometheus"
+          },
+          "refId": "A"
+        }
+      ],
+      "id": 12
+    },
+    {
+      "title": "Code duplication",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "lantern-devops-prometheus"
+      },
+      "description": "",
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 12,
+        "y": 35
+      },
+      "options": {},
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Unavailable",
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "lantern_sonar_measure{service=~\"${service:regex}\",repository=~\"${repository:regex}\",squad=~\"${squad:regex}\",measure=~\"duplicated_lines_density\"}",
+          "legendFormat": "{{service}} · {{measure}}",
+          "format": "time_series",
+          "instant": false,
+          "range": true,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "lantern-devops-prometheus"
+          },
+          "refId": "A"
+        }
+      ],
+      "id": 13
+    },
+    {
+      "title": "Technical debt",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "lantern-devops-prometheus"
+      },
+      "description": "",
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 0,
+        "y": 43
+      },
+      "options": {},
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Unavailable",
+          "unit": "m"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "lantern_sonar_measure{service=~\"${service:regex}\",repository=~\"${repository:regex}\",squad=~\"${squad:regex}\",measure=~\"sqale_index\"}",
+          "legendFormat": "{{service}} · {{measure}}",
+          "format": "time_series",
+          "instant": false,
+          "range": true,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "lantern-devops-prometheus"
+          },
+          "refId": "A"
+        }
+      ],
+      "id": 14
+    },
+    {
+      "title": "Bugs, vulnerabilities and code smells",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "lantern-devops-prometheus"
+      },
+      "description": "",
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 12,
+        "y": 43
+      },
+      "options": {},
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Unavailable"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "lantern_sonar_measure{service=~\"${service:regex}\",repository=~\"${repository:regex}\",squad=~\"${squad:regex}\",measure=~\"bugs|vulnerabilities|code_smells\"}",
+          "legendFormat": "{{service}} · {{measure}}",
+          "format": "time_series",
+          "instant": false,
+          "range": true,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "lantern-devops-prometheus"
+          },
+          "refId": "A"
+        }
+      ],
+      "id": 15
+    },
+    {
+      "title": "Software quality issues",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "lantern-devops-prometheus"
+      },
+      "description": "",
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 0,
+        "y": 51
+      },
+      "options": {},
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Unavailable"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "lantern_sonar_measure{service=~\"${service:regex}\",repository=~\"${repository:regex}\",squad=~\"${squad:regex}\",measure=~\"software_quality_.*_issues\"}",
+          "legendFormat": "{{service}} · {{measure}}",
+          "format": "time_series",
+          "instant": false,
+          "range": true,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "lantern-devops-prometheus"
+          },
+          "refId": "A"
+        }
+      ],
+      "id": 16
+    }
+  ]
+}

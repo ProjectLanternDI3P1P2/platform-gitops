@@ -1,6 +1,6 @@
 # Platform
 
-The Argo CD `platform` Application groups nine child Applications:
+The Argo CD `platform` Application groups platform child Applications:
 
 | Application | Source | Destination | Adoption |
 | --- | --- | --- | --- |
@@ -9,6 +9,8 @@ The Argo CD `platform` Application groups nine child Applications:
 | harbor | harbor 1.19.2 | harbor | Visible; synchronization blocked pending credential review |
 | arc-controller | gha-runner-scale-set-controller 0.14.2 | arc-systems | Existing Helm release; manual sync |
 | arc-runners | gha-runner-scale-set 0.14.2 | arc-runners | Existing Helm release; manual sync |
+| devops-prometheus | kube-prometheus-stack 92.10.0 | monitoring | Inventory existing metrics first, then manual sync |
+| devops-kpis | observability/devops-kpis/collector | monitoring | Manual sync after Prometheus CRDs ([runbook](../observability/devops-kpis/README.md)) |
 | alloy | alloy 1.13.0 | monitoring | Existing Helm release; manual sync |
 | longhorn | longhorn 1.12.1 | longhorn-system | Existing Helm release; manual sync |
 | traefik | platform/traefik/k3s | kube-system | HelmChartConfig only; K3s owns the workloads |
@@ -54,9 +56,10 @@ not bootstrap missing credentials. Harbor additionally ignores generated pod
 checksum annotations to avoid presenting secret regeneration as a rollout.
 These settings do not replace the first-sync review.
 
-All Applications use manual synchronization, no automatic pruning and no
-cascade-delete finalizer. Helm chart CRDs are not installed through these child
-Applications; existing CRD ownership is retained. Longhorn volumes and storage
+The monitoring Applications use manual synchronization and have no cascade-delete
+finalizer. Existing child Applications follow their individual sync policies.
+The new Prometheus Application includes its pinned chart CRDs for a fresh
+installation. Check for existing CRD ownership before its first sync. Longhorn volumes and storage
 settings must be reviewed before its first sync. Traefik stays under the K3s
 Helm controller, with Argo CD tracking its existing HelmChartConfig.
 

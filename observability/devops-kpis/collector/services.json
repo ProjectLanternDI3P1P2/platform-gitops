@@ -1,0 +1,72 @@
+[
+  {
+    "service": "combat",
+    "repository": "combat-backend",
+    "squad": "combat",
+    "deployment": "api",
+    "container": "api",
+    "ci": "ci.yaml",
+    "cd": "cd.yaml",
+    "sonar": "ProjectLanternDI3P1P2_combat-backend"
+  },
+  {
+    "service": "dungeon",
+    "repository": "dungeon-backend",
+    "squad": "dungeon",
+    "deployment": "api",
+    "container": "api",
+    "ci": "ci.yaml",
+    "cd": "cd.yaml",
+    "sonar": "ProjectLanternDI3P1P2_dungeon-backend"
+  },
+  {
+    "service": "frontend-game",
+    "repository": "frontend-game",
+    "squad": "unassigned",
+    "deployment": "frontend-game",
+    "container": "frontend-game",
+    "ci": "ci.yml",
+    "cd": "cd.yml",
+    "sonar": null
+  },
+  {
+    "service": "frontend-public",
+    "repository": "frontend-public",
+    "squad": "unassigned",
+    "deployment": "frontend-public",
+    "container": "frontend-public",
+    "ci": "ci.yml",
+    "cd": "cd.yml",
+    "sonar": null
+  },
+  {
+    "service": "leaderboard",
+    "repository": "leaderboard-backend",
+    "squad": "progression",
+    "deployment": "api",
+    "container": "api",
+    "ci": "ci.yaml",
+    "cd": "cd.yaml",
+    "sonar": "ProjectLanternDI3P1P2_leaderboard-backend"
+  },
+  {
+    "service": "player",
+    "repository": "player-backend",
+    "squad": "player",
+    "deployment": "player-api",
+    "container": "player-api",
+    "ci": "ci.yaml",
+    "cd": "cd.yaml",
+    "sonar": "ProjectLanternDI3P1P2_player-backend"
+  },
+  {
+    "service": "rewards",
+    "repository": "reward-backend",
+    "squad": "rewards",
+    "deployment": "api",
+    "container": "api",
+    "ci": "ci.yaml",
+    "cd": "cd.yaml",
+    "sonar": "ProjectLanternDI3P1P2_reward-backend"
+  }
+]

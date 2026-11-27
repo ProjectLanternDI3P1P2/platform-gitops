@@ -1,0 +1,98 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: lantern-kpi-workload-reader
+rules:
+  - apiGroups: [apps]
+    resources: [deployments]
+    resourceNames: [api, frontend-game, frontend-public, player-api]
+    verbs: [get]
+  - apiGroups: [apps]
+    resources: [replicasets]
+    verbs: [list]
+  - apiGroups: [""]
+    resources: [pods]
+    verbs: [list]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: lantern-kpi-application-reader
+  namespace: argocd
+rules:
+  - apiGroups: [argoproj.io]
+    resources: [applications]
+    resourceNames: [combat, dungeon, frontend-game, frontend-public, leaderboard, player, rewards]
+    verbs: [get]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: lantern-kpi-application-reader
+  namespace: argocd
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: Role, name: lantern-kpi-application-reader}
+subjects:
+  - {kind: ServiceAccount, name: lantern-kpi-collector, namespace: monitoring}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: lantern-kpi-workload-reader
+  namespace: combat
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: lantern-kpi-workload-reader}
+subjects:
+  - {kind: ServiceAccount, name: lantern-kpi-collector, namespace: monitoring}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: lantern-kpi-workload-reader
+  namespace: dungeon
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: lantern-kpi-workload-reader}
+subjects:
+  - {kind: ServiceAccount, name: lantern-kpi-collector, namespace: monitoring}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: lantern-kpi-workload-reader
+  namespace: frontend-game
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: lantern-kpi-workload-reader}
+subjects:
+  - {kind: ServiceAccount, name: lantern-kpi-collector, namespace: monitoring}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: lantern-kpi-workload-reader
+  namespace: frontend-public
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: lantern-kpi-workload-reader}
+subjects:
+  - {kind: ServiceAccount, name: lantern-kpi-collector, namespace: monitoring}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: lantern-kpi-workload-reader
+  namespace: leaderboard
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: lantern-kpi-workload-reader}
+subjects:
+  - {kind: ServiceAccount, name: lantern-kpi-collector, namespace: monitoring}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: lantern-kpi-workload-reader
+  namespace: player
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: lantern-kpi-workload-reader}
+subjects:
+  - {kind: ServiceAccount, name: lantern-kpi-collector, namespace: monitoring}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: lantern-kpi-workload-reader
+  namespace: rewards
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: lantern-kpi-workload-reader}
+subjects:
+  - {kind: ServiceAccount, name: lantern-kpi-collector, namespace: monitoring}

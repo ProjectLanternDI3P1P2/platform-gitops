@@ -1,0 +1,732 @@
+{
+  "uid": "lantern-devops-health",
+  "title": "Lantern · Kubernetes & Microservices Health",
+  "tags": [
+    "Lantern",
+    "DevOps"
+  ],
+  "schemaVersion": 39,
+  "editable": false,
+  "refresh": "5m",
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "timezone": "browser",
+  "links": [
+    {
+      "type": "dashboards",
+      "title": "Lantern DevOps",
+      "tags": [
+        "Lantern"
+      ],
+      "keepTime": true,
+      "asDropdown": true
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "service",
+        "label": "Service",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "lantern-devops-prometheus"
+        },
+        "definition": "label_values(lantern_service_info, service)",
+        "query": {
+          "query": "label_values(lantern_service_info, service)",
+          "refId": "var-service"
+        },
+        "refresh": 1,
+        "multi": true,
+        "includeAll": true,
+        "allValue": "combat|dungeon|frontend-game|frontend-public|leaderboard|player|rewards",
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        }
+      },
+      {
+        "name": "loki",
+        "label": "Kubernetes Loki",
+        "type": "datasource",
+        "query": "loki",
+        "refresh": 1,
+        "multi": false,
+        "includeAll": false,
+        "options": []
+      }
+    ]
+  },
+  "panels": [
+    {
+      "title": "Workload rollout status",
+      "type": "table",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "lantern-devops-prometheus"
+      },
+      "description": "",
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 0,
+        "y": 0
+      },
+      "options": {},
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Unavailable"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "service"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Open service detail",
+                    "url": "/d/lantern-devops-service/lantern-service-detail?var-service=${__data.fields.service}&${__url_time_range}"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "expr": "lantern_workload_rollout_info{service=~\"${service:regex}\"}",
+          "legendFormat": "",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "lantern-devops-prometheus"
+          },
+          "refId": "A"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "job": true,
+              "instance": true,
+              "endpoint": true,
+              "namespace": true,
+              "pod": true,
+              "container": true,
+              "deployment": true,
+              "repository": true,
+              "squad": true,
+              "Value": true
+            },
+            "indexByName": {
+              "service": 0,
+              "status": 1
+            }
+          }
+        }
+      ],
+      "id": 1
+    },
+    {
+      "title": "Argo CD application status",
+      "type": "table",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "lantern-devops-prometheus"
+      },
+      "description": "",
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 12,
+        "y": 0
+      },
+      "options": {},
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Unavailable"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "lantern_argo_application_info{service=~\"${service:regex}\"}",
+          "legendFormat": "",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "lantern-devops-prometheus"
+          },
+          "refId": "A"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "job": true,
+              "instance": true,
+              "endpoint": true,
+              "namespace": true,
+              "pod": true,
+              "container": true,
+              "deployment": true,
+              "repository": true,
+              "squad": true,
+              "Value": true
+            },
+            "indexByName": {
+              "service": 0,
+              "health": 1,
+              "sync": 2,
+              "gitops_revision": 3
+            }
+          }
+        }
+      ],
+      "id": 2
+    },
+    {
+      "title": "Desired and available replicas",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "lantern-devops-prometheus"
+      },
+      "description": "",
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 0,
+        "y": 8
+      },
+      "options": {},
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Unavailable"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "kube_deployment_spec_replicas{namespace=~\"${service:regex}\",deployment=~\"api|player-api|frontend-game|frontend-public\"}",
+          "legendFormat": "{{namespace}} desired",
+          "format": "time_series",
+          "instant": false,
+          "range": true,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "lantern-devops-prometheus"
+          },
+          "refId": "A"
+        },
+        {
+          "expr": "kube_deployment_status_replicas_available{namespace=~\"${service:regex}\",deployment=~\"api|player-api|frontend-game|frontend-public\"}",
+          "legendFormat": "{{namespace}} available",
+          "format": "time_series",
+          "instant": false,
+          "range": true,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "lantern-devops-prometheus"
+          },
+          "refId": "B"
+        }
+      ],
+      "id": 3
+    },
+    {
+      "title": "Ready and observed application pods",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "lantern-devops-prometheus"
+      },
+      "description": "",
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 12,
+        "y": 8
+      },
+      "options": {},
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Unavailable"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum by(namespace) (kube_pod_status_ready{namespace=~\"${service:regex}\",pod=~\"(api|player-api|frontend-game|frontend-public)-[a-z0-9]+-[a-z0-9]+\",condition=\"true\"})",
+          "legendFormat": "{{namespace}} ready",
+          "format": "time_series",
+          "instant": false,
+          "range": true,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "lantern-devops-prometheus"
+          },
+          "refId": "A"
+        },
+        {
+          "expr": "count by(namespace) (kube_pod_status_ready{namespace=~\"${service:regex}\",pod=~\"(api|player-api|frontend-game|frontend-public)-[a-z0-9]+-[a-z0-9]+\",condition=\"true\"})",
+          "legendFormat": "{{namespace}} observed",
+          "format": "time_series",
+          "instant": false,
+          "range": true,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "lantern-devops-prometheus"
+          },
+          "refId": "B"
+        }
+      ],
+      "id": 4
+    },
+    {
+      "title": "Container restarts",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "lantern-devops-prometheus"
+      },
+      "description": "",
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 0,
+        "y": 16
+      },
+      "options": {},
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Unavailable"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum by(namespace) (increase(kube_pod_container_status_restarts_total{namespace=~\"${service:regex}\",container=~\"api|player-api|frontend-game|frontend-public\"}[$__rate_interval]))",
+          "legendFormat": "{{namespace}}",
+          "format": "time_series",
+          "instant": false,
+          "range": true,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "lantern-devops-prometheus"
+          },
+          "refId": "A"
+        }
+      ],
+      "id": 5
+    },
+    {
+      "title": "Containers in CrashLoopBackOff",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "lantern-devops-prometheus"
+      },
+      "description": "",
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 12,
+        "y": 16
+      },
+      "options": {},
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Unavailable"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum by(namespace) (kube_pod_container_status_waiting_reason{namespace=~\"${service:regex}\",container=~\"api|player-api|frontend-game|frontend-public\",reason=\"CrashLoopBackOff\"})",
+          "legendFormat": "{{namespace}}",
+          "format": "time_series",
+          "instant": false,
+          "range": true,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "lantern-devops-prometheus"
+          },
+          "refId": "A"
+        }
+      ],
+      "id": 6
+    },
+    {
+      "title": "CPU usage, requests and limits",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "lantern-devops-prometheus"
+      },
+      "description": "Application containers. Requests and limits are omitted when unset.",
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 0,
+        "y": 24
+      },
+      "options": {},
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Unavailable",
+          "unit": "suffix: cores"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum by (namespace) (rate(container_cpu_usage_seconds_total{namespace=~\"${service:regex}\",container=~\"api|player-api|frontend-game|frontend-public\",image!=\"\"}[$__rate_interval]))",
+          "legendFormat": "{{namespace}} usage",
+          "format": "time_series",
+          "instant": false,
+          "range": true,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "lantern-devops-prometheus"
+          },
+          "refId": "A"
+        },
+        {
+          "expr": "sum by (namespace) (kube_pod_container_resource_requests{namespace=~\"${service:regex}\",container=~\"api|player-api|frontend-game|frontend-public\",resource=\"cpu\"})",
+          "legendFormat": "{{namespace}} requests",
+          "format": "time_series",
+          "instant": false,
+          "range": true,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "lantern-devops-prometheus"
+          },
+          "refId": "B"
+        },
+        {
+          "expr": "sum by (namespace) (kube_pod_container_resource_limits{namespace=~\"${service:regex}\",container=~\"api|player-api|frontend-game|frontend-public\",resource=\"cpu\"})",
+          "legendFormat": "{{namespace}} limits",
+          "format": "time_series",
+          "instant": false,
+          "range": true,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "lantern-devops-prometheus"
+          },
+          "refId": "C"
+        }
+      ],
+      "id": 7
+    },
+    {
+      "title": "Memory usage, requests and limits",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "lantern-devops-prometheus"
+      },
+      "description": "Application containers. Requests and limits are omitted when unset.",
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 12,
+        "y": 24
+      },
+      "options": {},
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Unavailable",
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum by (namespace) (container_memory_working_set_bytes{namespace=~\"${service:regex}\",container=~\"api|player-api|frontend-game|frontend-public\",image!=\"\"})",
+          "legendFormat": "{{namespace}} usage",
+          "format": "time_series",
+          "instant": false,
+          "range": true,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "lantern-devops-prometheus"
+          },
+          "refId": "A"
+        },
+        {
+          "expr": "sum by (namespace) (kube_pod_container_resource_requests{namespace=~\"${service:regex}\",container=~\"api|player-api|frontend-game|frontend-public\",resource=\"memory\"})",
+          "legendFormat": "{{namespace}} requests",
+          "format": "time_series",
+          "instant": false,
+          "range": true,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "lantern-devops-prometheus"
+          },
+          "refId": "B"
+        },
+        {
+          "expr": "sum by (namespace) (kube_pod_container_resource_limits{namespace=~\"${service:regex}\",container=~\"api|player-api|frontend-game|frontend-public\",resource=\"memory\"})",
+          "legendFormat": "{{namespace}} limits",
+          "format": "time_series",
+          "instant": false,
+          "range": true,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "lantern-devops-prometheus"
+          },
+          "refId": "C"
+        }
+      ],
+      "id": 8
+    },
+    {
+      "title": "Application error and warning log lines",
+      "type": "timeseries",
+      "datasource": {
+        "type": "loki",
+        "uid": "${loki}"
+      },
+      "description": "Severity tokens in application log text. A line can match both queries.",
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 0,
+        "y": 32
+      },
+      "options": {},
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Unavailable"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum by(namespace) (count_over_time({job=\"kubernetes-pods\",namespace=~\"${service:regex}\",container=~\"api|player-api|frontend-game|frontend-public\"} |~ \"(?i)(^|[[:space:]\\\"\\\\[])(error|err|fail|fatal|critical)([[:space:]\\\"\\\\]:,]|$)\" [$__interval]))",
+          "legendFormat": "{{namespace}} errors",
+          "queryType": "range",
+          "datasource": {
+            "type": "loki",
+            "uid": "${loki}"
+          },
+          "refId": "A"
+        },
+        {
+          "expr": "sum by(namespace) (count_over_time({job=\"kubernetes-pods\",namespace=~\"${service:regex}\",container=~\"api|player-api|frontend-game|frontend-public\"} |~ \"(?i)(^|[[:space:]\\\"\\\\[])(warn|warning)([[:space:]\\\"\\\\]:,]|$)\" [$__interval]))",
+          "legendFormat": "{{namespace}} warnings",
+          "queryType": "range",
+          "datasource": {
+            "type": "loki",
+            "uid": "${loki}"
+          },
+          "refId": "B"
+        }
+      ],
+      "id": 9
+    },
+    {
+      "title": "Application errors and warnings",
+      "type": "logs",
+      "datasource": {
+        "type": "loki",
+        "uid": "${loki}"
+      },
+      "description": "Matches log text for error and warning severity tokens. Select the existing Kubernetes Loki datasource.",
+      "gridPos": {
+        "w": 24,
+        "h": 10,
+        "x": 0,
+        "y": 40
+      },
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "wrapLogMessage": true,
+        "sortOrder": "Descending"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Unavailable"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "{job=\"kubernetes-pods\",namespace=~\"${service:regex}\",container=~\"api|player-api|frontend-game|frontend-public\"} |~ \"(?i)(^|[[:space:]\\\"\\\\[])(error|err|fail|fatal|critical)([[:space:]\\\"\\\\]:,]|$)|(?i)(^|[[:space:]\\\"\\\\[])(warn|warning)([[:space:]\\\"\\\\]:,]|$)\"",
+          "legendFormat": "",
+          "queryType": "range",
+          "datasource": {
+            "type": "loki",
+            "uid": "${loki}"
+          },
+          "refId": "A"
+        }
+      ],
+      "links": [
+        {
+          "title": "Open application logs in Explore",
+          "url": "/explore?schemaVersion=1&panes=%7B%22logs%22%3A%7B%22datasource%22%3A%22${loki}%22%2C%22queries%22%3A%5B%7B%22refId%22%3A%22A%22%2C%22expr%22%3A%22%7Bjob%3D%5C%22kubernetes-pods%5C%22%2Cnamespace%3D~%5C%22${service:regex}%5C%22%2Ccontainer%3D~%5C%22api%7Cplayer-api%7Cfrontend-game%7Cfrontend-public%5C%22%7D%20%7C~%20%5C%22%28%3Fi%29%28%5E%7C%5B%5B%3Aspace%3A%5D%5C%5C%5C%22%5C%5C%5C%5C%5B%5D%29%28error%7Cerr%7Cfail%7Cfatal%7Ccritical%29%28%5B%5B%3Aspace%3A%5D%5C%5C%5C%22%5C%5C%5C%5C%5D%3A%2C%5D%7C%24%29%7C%28%3Fi%29%28%5E%7C%5B%5B%3Aspace%3A%5D%5C%5C%5C%22%5C%5C%5C%5C%5B%5D%29%28warn%7Cwarning%29%28%5B%5B%3Aspace%3A%5D%5C%5C%5C%22%5C%5C%5C%5C%5D%3A%2C%5D%7C%24%29%5C%22%22%2C%22queryType%22%3A%22range%22%7D%5D%2C%22range%22%3A%7B%22from%22%3A%22${__from}%22%2C%22to%22%3A%22${__to}%22%7D%7D%7D"
+        }
+      ],
+      "id": 10
+    },
+    {
+      "title": "Kubernetes node readiness",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "lantern-devops-prometheus"
+      },
+      "description": "",
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 0,
+        "y": 50
+      },
+      "options": {},
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Unavailable"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "kube_node_status_condition{condition=\"Ready\",status=\"true\"}",
+          "legendFormat": "{{node}}",
+          "format": "time_series",
+          "instant": false,
+          "range": true,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "lantern-devops-prometheus"
+          },
+          "refId": "A"
+        }
+      ],
+      "id": 11
+    },
+    {
+      "title": "Kubernetes metrics scrape health",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "lantern-devops-prometheus"
+      },
+      "description": "",
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 12,
+        "y": 50
+      },
+      "options": {},
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Unavailable"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "up{job=~\"kubelet|kube-state-metrics\"}",
+          "legendFormat": "{{job}} {{instance}}",
+          "format": "time_series",
+          "instant": false,
+          "range": true,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "lantern-devops-prometheus"
+          },
+          "refId": "A"
+        }
+      ],
+      "id": 12
+    },
+    {
+      "title": "Source availability",
+      "type": "table",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "lantern-devops-prometheus"
+      },
+      "description": "1 = source responded, 0 = unavailable or not configured. Empty = no fresh collector sample.",
+      "gridPos": {
+        "w": 12,
+        "h": 8,
+        "x": 0,
+        "y": 58
+      },
+      "options": {},
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Unavailable"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "lantern_source_available{service=~\"${service:regex}\",source=~\"kubernetes|argocd\"}",
+          "legendFormat": "",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "lantern-devops-prometheus"
+          },
+          "refId": "A"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "job": true,
+              "instance": true,
+              "endpoint": true,
+              "namespace": true,
+              "pod": true,
+              "container": true,
+              "deployment": true,
+              "repository": true,
+              "squad": true
+            },
+            "indexByName": {
+              "service": 0,
+              "source": 1,
+              "Value": 2
+            }
+          }
+        }
+      ],
+      "id": 13
+    }
+  ]
+}

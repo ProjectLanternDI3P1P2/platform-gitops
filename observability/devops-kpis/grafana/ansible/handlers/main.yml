@@ -1,0 +1,4 @@
+- name: Restart Lantern Grafana
+  ansible.builtin.service:
+    name: "{{ lantern_kpi_grafana_service }}"
+    state: restarted

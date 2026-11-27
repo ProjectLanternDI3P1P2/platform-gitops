@@ -43,6 +43,7 @@ jobs:
         run: |
           set -euo pipefail
           helm repo add argo https://argoproj.github.io/argo-helm
+          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
           helm repo add grafana https://grafana.github.io/helm-charts
           helm repo add harbor https://helm.goharbor.io
           helm repo add longhorn https://charts.longhorn.io
@@ -67,6 +68,13 @@ jobs:
           helm template lantern-k3s-builders oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set \
             --version 0.14.2 -n arc-runners --skip-crds \
             -f platform/actions-runner-controller/runners/values.yaml >/dev/null
+
+      - name: Validate DevOps KPI configuration
+        run: |
+          helm template lantern-kpi prometheus-community/kube-prometheus-stack --version 92.10.0 -n monitoring --include-crds \
+            -f observability/devops-kpis/prometheus/values.yaml >/dev/null
+          python3 -B observability/devops-kpis/grafana/generate.py --check
+          python3 -B -m unittest discover -s observability/devops-kpis/collector
 
       - name: Validate migration jobs and image promotion
         run: |
