@@ -1,7 +1,7 @@
 # Image Admission Policy — Scanned, Signed and Traceable Images Only
 
 Scope: Container images built by the CI/CD pipelines, stored in the Harbor registry and deployed on the Lantern K3s cluster through Argo CD
-Version: 1.0 (draft for review)
+Version: 1.1 (draft for review). Registry side enforced in Harbor since 2026-11-27 (Cosign required, CRITICAL blocked); cluster admission pending
 Status: Deny by default — an image is deployed only if it is scanned, signed by a trusted identity, referenced by immutable digest, comes from the trusted registry and has verifiable provenance
 
 ---
